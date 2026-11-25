@@ -9,6 +9,7 @@ on:
         default: ""
   push:
     branches:
+      - "main"
       - "actweave/**"
     paths:
       - "hub/**"

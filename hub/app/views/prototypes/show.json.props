@@ -233,6 +233,7 @@ json.reviewComments do
     json.commentActionsLabel t \
       "prototypes.show.review_comments.comment_actions",
       author: "%{author}"
+    json.markUnreadLabel t("notifications.mark_unread")
     json.editLabel t("prototypes.show.review_comments.edit")
     json.deleteLabel t("prototypes.show.review_comments.delete")
     json.editCommentLabel t("prototypes.show.review_comments.edit_comment")

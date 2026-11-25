@@ -1,0 +1,19 @@
+zh-CN:
+  welcome:
+    navigation: 欢迎
+    heading: 开始使用 Replica
+    description: 将想法快速转化为可交互的原型。
+    video_label: 了解 Replica 如何工作
+    video_description: 观看演示，了解产品创意如何变成团队可以体验、讨论并持续打磨的交互原型。
+    video_unavailable: 介绍视频暂不可用，你仍可通过下方链接开始使用。
+    video_failed: 介绍视频加载失败，请尝试刷新页面或使用下方链接。
+    readme_label: 了解 Replica
+    readme_description: 查看 Replica 如何串联原型创作与团队评审反馈。
+    setup_label: 快速上手
+    setup_description: 一步步创建、体验并分享你的第一个原型。
+    create_label: 创建原型
+    create_description: 借助 GitHub Copilot 将创意转化为交互原型。
+    create_unavailable: 在此处创建原型需要先连接一个 GitHub 仓库。
+    hide_label: 隐藏欢迎页
+    hide_description: 从侧边栏隐藏“欢迎”入口，之后仍可直接访问 /welcome。
+    hidden: 已从侧边栏隐藏“欢迎”入口，之后仍可直接访问 /welcome。

@@ -1,0 +1,81 @@
+name: Build ActWeave Hub image
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional extra image tag (e.g. 1.0.1-zh1)"
+        required: false
+        default: ""
+  push:
+    branches:
+      - "actweave/**"
+    paths:
+      - "hub/**"
+      - "packages/learning/**"
+      - ".github/workflows/actweave-hub-image.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build and push ghcr.io/actweave/replica (linux/amd64)
+    if: github.repository == 'actweave/replica'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compute image tags
+        id: meta
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          SHA: ${{ github.sha }}
+        run: |
+          short_sha="${SHA:0:12}"
+          tags="ghcr.io/actweave/replica:sha-${short_sha}"
+          version="sha-${short_sha}"
+          if [[ -n "$INPUT_TAG" ]]; then
+            tags="${tags}"$'\n'"ghcr.io/actweave/replica:${INPUT_TAG}"
+            version="$INPUT_TAG"
+          fi
+          {
+            echo "version=${version}"
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
+        with:
+          context: hub
+          build-contexts: learning=packages/learning
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/actweave/replica
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+          build-args: |
+            REPLICA_IMAGE_REVISION=${{ github.sha }}
+            REPLICA_IMAGE_VERSION=${{ steps.meta.outputs.version }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print immutable image digest
+        env:
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "Published: ghcr.io/actweave/replica@${IMAGE_DIGEST}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Published: ghcr.io/actweave/replica@${IMAGE_DIGEST}"

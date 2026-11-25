@@ -43,6 +43,10 @@ module ReplicaHub
     # Don't generate system test files.
     config.generators.system_tests = nil
     config.app_generators { _1.test_framework _1.test_framework, fixture: false }
+
+    config.i18n.available_locales = %i[en zh-CN]
+    config.i18n.default_locale = ENV.fetch("REPLICA_LOCALE", Rails.env.test? ? "en" : "zh-CN").to_sym
+    config.i18n.fallbacks = [ :en ]
     config.middleware.insert_before 0, AzureFrontDoorVerification
     config.middleware.insert_after AzureFrontDoorVerification, PreviewPathRouting
 

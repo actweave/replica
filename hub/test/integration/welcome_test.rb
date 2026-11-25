@@ -191,6 +191,24 @@ class WelcomeTest < ActionDispatch::IntegrationTest
     Rails.configuration.x.welcome_video_url = previous_url
   end
 
+  test "renders Chinese welcome copy and falls back to English for untranslated workspace strings" do
+    github_app_configurations.create_installed
+    repository = repository_payload(2001, "github/prototype")
+    stub_github_sign_in(repositories: [ repository ], permissions: { 2001 => "pull" })
+    sign_in
+
+    I18n.with_locale(:"zh-CN") do
+      get welcome_path, headers: { "Accept" => "application/json" }
+      assert_response :success
+      data = response.parsed_body.fetch("data")
+      assert_equal "开始使用 Replica", data.fetch("heading")
+      assert_equal "将想法快速转化为可交互的原型。", data.fetch("description")
+      assert_equal "创建原型", data.fetch("createLabel")
+      assert_equal "隐藏欢迎页", data.fetch("hideLabel")
+      assert_equal "Prototypes", data.fetch("workspace").fetch("repository").fetch("prototypesLabel")
+    end
+  end
+
   private
 
   def sign_in

@@ -125,7 +125,7 @@ Normalize effective permission for `(repository, user)` across both production a
 - `REPLICA_AUTH_EMAIL_ENABLED` (`"1"` / `"true"` to enable; automatically enabled when `REPLICA_AUTH_MODE=unified` or `RESEND_API_KEY` is configured with allowlist)
 - `RESEND_API_KEY`: Resend API key (kept in runtime secrets, never committed)
 - `RESEND_FROM_EMAIL`: verified sender address (e.g. `Replica Hub <noreply@example.com>`)
-- `RESEND_API_BASE_URL`: defaults to `https://api.resend.com` (honors `HTTPS_PROXY` via `Net::HTTP` default proxy support)
+- `RESEND_API_BASE_URL`: defaults to `https://api.resend.com` (uses the HTTPS proxy selected for this URL, including `HTTPS_PROXY` and `NO_PROXY`)
 
 ### Delivery & Security Rules
 
@@ -133,7 +133,7 @@ Normalize effective permission for `(repository, user)` across both production a
   - Rate-limited by trusted IP and normalized email (`SecurityRateLimiting`).
   - Checks `AuthAllowlistEntry` for normalized email.
   - Always returns a generic success response ("If this email is allowed, a verification code has been sent") to prevent allowlist enumeration.
-  - Generates a cryptographically random 6-digit code (`SecureRandom.random_number(1_000_000)` formatted `%06d`), stores only its HMAC digest, invalidates prior unconsumed challenges for that email.
+  - Invalidates prior unconsumed challenges for that email and queues the new challenge after commit. The default Solid Queue worker receives only its ID, generates a six-digit code with `SecureRandom.random_number(1_000_000)`, and saves its HMAC digest before delivery. Keep the worker running alongside the web process. Expired challenges are removed hourly.
   - Sends email via `ResendClient` (`POST /emails` with `Authorization: Bearer <RESEND_API_KEY>`). In `development` when `RESEND_API_KEY` is blank, logs the code to Rails logger so local debugging works without external credentials.
 - `POST /auth/email/verify`:
   - Rate-limited by IP and email; constant-time digest comparison; atomic consumption with max 5 attempts and 10-minute expiry.

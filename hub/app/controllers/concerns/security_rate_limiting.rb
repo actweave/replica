@@ -6,6 +6,10 @@ module SecurityRateLimiting
   BUDGETS = {
     github_app_setup: [ 5, 1.minute ],
     oauth_initiation: [ 60, 5.minutes ],
+    email_request_ip: [ 30, 10.minutes ],
+    email_request: [ 5, 10.minutes ],
+    email_verify_ip: [ 60, 10.minutes ],
+    email_verify: [ 15, 10.minutes ],
     oauth_callback: [ 60, 5.minutes ],
     comments: [ 60, 1.minute ],
     analytics_destinations: [ 5, 1.minute ],

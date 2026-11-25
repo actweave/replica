@@ -198,10 +198,14 @@ export function readHubReviewCollection(log, { repository }) {
   const identified = [...threads.values()].some(
     (thread) =>
       [thread.root, ...thread.replies].some(
-        (message) => message.authorGithubId !== undefined || message.authorLocalId !== undefined,
+        (message) =>
+          message.authorGithubId !== undefined ||
+          message.authorLocalId !== undefined ||
+          message.authorExternalId !== undefined,
       ) ||
       thread.root.resolvedByGithubId !== undefined ||
-      thread.root.resolvedByLocalId !== undefined,
+      thread.root.resolvedByLocalId !== undefined ||
+      thread.root.resolvedByExternalId !== undefined,
   )
   return {
     meta: {
@@ -243,7 +247,16 @@ export function hubThreadEpisode({ meta, thread, scope, grantIds, principal, imp
       buildNumber: root.buildNumber,
       threadId: root.id,
     },
-    actors: [reviewer(root.authorLogin, root.authorGithubId, root.authorLocalId, scope, meta)],
+    actors: [
+      reviewer(
+        root.authorLogin,
+        root.authorGithubId,
+        root.authorLocalId,
+        root.authorExternalId,
+        scope,
+        meta,
+      ),
+    ],
     grants: [...grantIds],
     contentTrust: { untrusted: true, treatAs: "data", source: HUB_SOURCE },
     provenance: {
@@ -297,10 +310,14 @@ export function hubThreadEvents({ meta, thread, scope, episodeId, existing }) {
       message.authorLogin,
       message.authorGithubId,
       message.authorLocalId,
+      message.authorExternalId,
       scope,
       meta,
     )
-    const stable = message.authorGithubId !== undefined || message.authorLocalId !== undefined
+    const stable =
+      message.authorGithubId !== undefined ||
+      message.authorLocalId !== undefined ||
+      message.authorExternalId !== undefined
     const versionIds = new Set(versions.map((event) => event.id))
     const existingStable = [
       ...versions,
@@ -431,6 +448,7 @@ export function hubThreadEvents({ meta, thread, scope, episodeId, existing }) {
           thread.root.resolvedByLogin,
           thread.root.resolvedByGithubId,
           thread.root.resolvedByLocalId,
+          thread.root.resolvedByExternalId,
           scope,
           meta,
         )
@@ -489,7 +507,14 @@ function loginOf(actor) {
   return actor.login ?? actor.id.replace(/^github:/, "")
 }
 
-function reviewer(login, githubId, localId, scope, meta) {
+function reviewer(login, githubId, localId, externalId, scope, meta) {
+  if (externalId !== undefined)
+    return {
+      kind: "human",
+      id: `hub-external:${new URL(meta.hubOrigin).origin}/${externalId}`,
+      login,
+      role: "reviewer",
+    }
   if (githubId !== undefined) {
     if (!scope.host || scope.host === "local")
       invalid("A GitHub reviewer ID needs an explicit GitHub host in the scope.")
@@ -509,13 +534,15 @@ function reviewer(login, githubId, localId, scope, meta) {
 
 export function stableReviewer(actor, scope, source) {
   const prefix =
-    scope.host === "local"
-      ? source.hubOrigin
-        ? `hub-user:${new URL(source.hubOrigin).origin}/`
-        : null
-      : scope.host
-        ? `github-user:${scope.host}/`
-        : null
+    actor?.id?.startsWith("hub-external:") && source.hubOrigin
+      ? `hub-external:${new URL(source.hubOrigin).origin}/`
+      : scope.host === "local"
+        ? source.hubOrigin
+          ? `hub-user:${new URL(source.hubOrigin).origin}/`
+          : null
+        : scope.host
+          ? `github-user:${scope.host}/`
+          : null
   if (!prefix || !actor?.id?.startsWith(prefix)) return false
   const id = actor.id.slice(prefix.length)
   return /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id))
@@ -642,6 +669,9 @@ function readMessage(value, kind) {
     body,
     authorLogin: value.author.login,
     ...(authorIdentity.githubId !== undefined ? { authorGithubId: authorIdentity.githubId } : {}),
+    ...(authorIdentity.externalId !== undefined
+      ? { authorExternalId: authorIdentity.externalId }
+      : {}),
     ...(authorIdentity.localId !== undefined ? { authorLocalId: authorIdentity.localId } : {}),
     createdAt: timestamp(value.createdAt, "createdAt"),
     editedAt:
@@ -679,6 +709,9 @@ function readMessage(value, kind) {
     ...(resolverIdentity.githubId !== undefined
       ? { resolvedByGithubId: resolverIdentity.githubId }
       : {}),
+    ...(resolverIdentity.externalId !== undefined
+      ? { resolvedByExternalId: resolverIdentity.externalId }
+      : {}),
     ...(resolverIdentity.localId !== undefined
       ? { resolvedByLocalId: resolverIdentity.localId }
       : {}),
@@ -687,15 +720,14 @@ function readMessage(value, kind) {
   function readIdentity(value, label) {
     if (!isObject(value)) invalid(`${label} must be an actor.`)
     if (Object.hasOwn(value, "local")) invalid(`${label} uses localId, not a local flag.`)
-    if (Object.hasOwn(value, "githubId") && Object.hasOwn(value, "localId"))
-      invalid(`${label} cannot name both githubId and localId.`)
+    const keys = ["githubId", "localId", "externalId"].filter((key) => Object.hasOwn(value, key))
+    if (keys.length > 1) invalid(`${label} must supply only one identity.`)
     const identity = {}
-    for (const key of ["githubId", "localId"])
-      if (Object.hasOwn(value, key)) {
-        if (!positive(value[key])) invalid(`${label}.${key} must be a positive safe integer.`)
-        if (!LOGIN.test(value.login ?? "")) invalid(`${label} needs a login for display.`)
-        identity[key] = value[key]
-      }
+    for (const key of keys) {
+      if (!positive(value[key])) invalid(`${label}.${key} must be a positive safe integer.`)
+      if (!LOGIN.test(value.login ?? "")) invalid(`${label} needs a login for display.`)
+      identity[key] = value[key]
+    }
     return identity
   }
 }

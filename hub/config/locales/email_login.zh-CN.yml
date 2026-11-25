@@ -1,0 +1,26 @@
+zh-CN:
+  email_login:
+    sent: 如果此邮箱已获准登录，您将很快收到验证码。
+    invalid: 验证码无效或已过期。请重试或重新获取验证码。
+    email_label: 邮箱地址
+    code_label: 六位验证码
+    send_label: 发送登录验证码
+    verify_label: 验证并登录
+    restart_label: 重新获取验证码或更换邮箱
+    subject: 您的 Replica Hub 登录验证码
+    body: "您的登录验证码是 %{code}，十分钟内有效。"
+  home:
+    index:
+      badge: 协作原型设计
+      badge_alternate: 收集团队反馈
+      heading: 与团队一起构建和评审原型
+      description: Replica Hub 将 GitHub 分支转换为可分享的原型，方便团队评审变更并提供反馈。
+      local_badge: 本地开发
+      local_badge_alternate: 分支、构建与反馈
+      local_heading: 在本机构建和评审原型
+      local_description: 浏览本地 Git 仓库中已经提交的分支。
+      local_sign_in: 打开本地 Hub
+      footer_note: "© %{year} GitHub, Inc."
+      sign_in: 使用 GitHub 登录
+      pause_animation: 暂停动画
+      resume_animation: 继续播放动画

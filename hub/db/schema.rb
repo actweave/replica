@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_25_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_26_000000) do
   create_table "analytics_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -233,6 +233,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_25_000000) do
     t.index ["user_id"], name: "index_copilot_connections_on_user_id"
     t.check_constraint "length(token_digest) = 64 AND token_digest NOT GLOB '*[^0-9a-f]*'", name: "copilot_connections_token_digest"
     t.check_constraint "singleton_key = 1", name: "copilot_connections_singleton"
+  end
+
+  create_table "email_login_challenges", force: :cascade do |t|
+    t.string "email", null: false
+    t.string "code_digest", default: "", null: false
+    t.datetime "expires_at", null: false
+    t.integer "attempts", default: 0, null: false
+    t.datetime "consumed_at"
+    t.string "request_ip"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "created_at"], name: "index_email_login_challenges_on_email_and_created_at"
+    t.index ["email"], name: "index_email_login_challenges_on_email", unique: true, where: "consumed_at IS NULL"
+    t.index ["expires_at"], name: "index_email_login_challenges_on_expires_at"
   end
 
   create_table "fresh_authorizations", force: :cascade do |t|

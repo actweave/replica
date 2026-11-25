@@ -5,7 +5,7 @@ class LocalAuthenticationsController < ApplicationController
   # Signs in only after repositories have been configured on disk.
   # @route POST /auth/local (local_authentication)
   def create
-    return head :not_found if !LocalDevelopment.enabled?
+    return head :not_found if !LocalDevelopment.enabled? || LocalDevelopment.unified_auth?
     return head :not_found if request.base_url != Rails.configuration.x.hub_origin.delete_suffix("/")
 
     Repository::LocalDiscovery.register_repositories!

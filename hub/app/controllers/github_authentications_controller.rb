@@ -6,7 +6,7 @@ class GithubAuthenticationsController < ApplicationController
 
   # @route POST /auth/github (github_authentication)
   def create
-    return head :not_found if LocalDevelopment.enabled?
+    return head :not_found unless GithubAppConfiguration.sign_in_enabled?
 
     configuration = GithubAppConfiguration.current
     return authentication_failed if configuration.nil?
@@ -22,7 +22,7 @@ class GithubAuthenticationsController < ApplicationController
 
   # @route GET /auth/github/callback (github_authentication_callback)
   def callback
-    return head :not_found if LocalDevelopment.enabled?
+    return head :not_found unless GithubAppConfiguration.sign_in_enabled?
 
     return fresh_authorization_callback if session[:fresh_authorization_id].present?
 

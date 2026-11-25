@@ -23,4 +23,11 @@ class Session < ApplicationRecord
   belongs_to :user
 
   validates :user, presence: true
+
+  # Apply the same identity boundary to HTTP and cable sessions.
+  def resumable?
+    return user.local? == LocalDevelopment.enabled? unless LocalDevelopment.unified_auth?
+
+    user.external? || (!user.local? && GithubAppConfiguration.sign_in_enabled?)
+  end
 end

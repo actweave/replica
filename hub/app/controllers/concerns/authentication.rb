@@ -18,7 +18,7 @@ module Authentication
   # Restores the database session referenced by the encrypted cookie.
   def resume_session
     browser_session = Session.includes(:user).find_by(id: session[:authenticated_session_id])
-    allowed = browser_session && browser_session.user.local? == LocalDevelopment.enabled?
+    allowed = browser_session&.resumable?
     Current.session = allowed ? browser_session : nil
   end
 
@@ -52,7 +52,7 @@ module Authentication
   def start_new_session_for(user, fresh_authorized_at: nil,
     generation: SessionRevocation.current.generation, configuration_id: nil, credential_revision: nil)
     browser_session = SessionRevocation.with_generation!(generation) do
-      if LocalDevelopment.enabled? && configuration_id.nil? && credential_revision.nil?
+      if (user.external? || LocalDevelopment.enabled?) && configuration_id.nil? && credential_revision.nil?
         create_browser_session_for(user, fresh_authorized_at:)
       else
         GithubAppConfiguration.with_credentials!(configuration_id:, credential_revision:) do

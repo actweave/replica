@@ -58,6 +58,7 @@ class SessionRevocation < ApplicationRecord
       CanvasPairing.delete_all
       FreshAuthorization.delete_all
       HubAdminEnrollment.delete_all
+      EmailLoginChallenge.pending.update_all(consumed_at: now)
       Session.delete_all
       SecurityAuditEvent.record! \
         action: "session_revocation.end_all", outcome: "succeeded", actor: live_actor,

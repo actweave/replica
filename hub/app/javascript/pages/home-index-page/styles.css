@@ -82,6 +82,17 @@
   margin-block-start: 2rem;
 }
 
+.home__email-login {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 24rem;
+  margin-block-start: 1.5rem;
+}
+
+.home__email-login a {
+  color: var(--hub-fg-default);
+}
+
 .home__alert {
   width: 100%;
   max-width: 36rem;

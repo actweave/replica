@@ -175,10 +175,10 @@ class Prototype < ApplicationRecord
     authorization = repository.authorization
     return false if !authorization.sufficient?(repository_permission, minimum: :read)
 
-    build_author = builds.where \
-      state: "successful",
-      commit_author_github_id: user.github_id
-    build_author.exists? || authorization.sufficient?(repository_permission, minimum: :admin)
+    return true if authorization.sufficient?(repository_permission, minimum: :admin)
+    return false unless user.github_id
+
+    builds.exists?(state: "successful", commit_author_github_id: user.github_id)
   end
 
   private

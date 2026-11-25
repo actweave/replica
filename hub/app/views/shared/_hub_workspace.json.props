@@ -36,7 +36,7 @@ json.partial! \
   locals: { administration_allowed: !@access_denied, context_repository: repository }
 json.securityAuditLabel t("security_audit.heading")
 hub_admin = !@access_denied &&
-  User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+  User.hub_admins.exists?(id: Current.user.id)
 if hub_admin && local_assigns[:selected_section] == "audit"
   json.securityAuditPath security_audit_path
 elsif repository&.authorization&.sufficient?(workspace.fetch(:permission), minimum: :admin)

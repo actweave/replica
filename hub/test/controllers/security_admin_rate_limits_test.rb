@@ -88,7 +88,7 @@ class SecurityAdminRateLimitsTest < ActionController::TestCase
   end
 
   test "an admin flag without a live GitHub identity does not spend the admin budget" do
-    @user.update_columns(github_id: nil)
+    @user.update_columns(identity_kind: "local", github_id: nil)
     dispatch("github_apps", :destroy)
     assert_redirected_to "http://test.host/"
     assert_nil Rails.cache.read("rate-limit:security:hub_admin:#{@user.id}")

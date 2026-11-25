@@ -31,7 +31,7 @@ class GithubAppsController < SuperglueController
 
   # Match the existing normal administrator boundary before loading App data.
   def authorize_admin
-    return if User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists? &&
+    return if User.hub_admins.exists?(id: Current.user.id) &&
       !LocalDevelopment.enabled?
 
     deny_admin_access

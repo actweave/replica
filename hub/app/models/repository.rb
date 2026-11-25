@@ -36,6 +36,7 @@ class Repository < ApplicationRecord
 
   scope :active, -> { where(installation_state: "active") }
 
+  has_many :repository_memberships, dependent: :delete_all
   has_many :prototypes
   has_many :share_link_creator_revocations, dependent: :delete_all
   has_many :analytics_events, class_name: "Analytics::Event", dependent: :restrict_with_exception

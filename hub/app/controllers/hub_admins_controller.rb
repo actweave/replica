@@ -14,7 +14,7 @@ class HubAdminsController < SuperglueController
 
   # @route GET /hub_admins (hub_admins)
   def index
-    relation = User.where(hub_admin: true).where.not(github_id: nil)
+    relation = User.hub_admins
     @administrator_count = relation.count
     if params[:before].present?
       return target_not_found if !params[:before].to_s.match?(/\A[1-9]\d{0,17}\z/)
@@ -36,7 +36,7 @@ class HubAdminsController < SuperglueController
     end
 
     query = params[:query].to_s.strip
-    relation = User.where(hub_admin: false).where.not(github_id: nil)
+    relation = User.non_local.where(hub_admin: false)
     if query.present?
       pattern = "%#{User.sanitize_sql_like(query.first(100))}%"
       relation = relation.where("login LIKE :query ESCAPE '\\' OR name LIKE :query ESCAPE '\\'", query: pattern)
@@ -61,7 +61,7 @@ class HubAdminsController < SuperglueController
   # @route GET /hub_admins/:id/edit (edit_hub_admin)
   def edit
     @operation = @target.hub_admin? ? "revoke" : "designate"
-    @last_admin = @target.hub_admin? && User.where(hub_admin: true).where.not(github_id: nil).count <= 1
+    @last_admin = @target.hub_admin? && User.hub_admins.count <= 1
     record_security_audit(outcome: "succeeded")
   end
 
@@ -83,7 +83,7 @@ class HubAdminsController < SuperglueController
 
   # Checks the persisted role before exposing users or creating a challenge.
   def authorize_admin
-    return if User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+    return if User.hub_admins.exists?(id: Current.user.id)
 
     record_security_audit(outcome: "denied")
     if action_name == "candidates"
@@ -97,7 +97,7 @@ class HubAdminsController < SuperglueController
 
   # Only resolved server-owned target IDs enter audit context.
   def load_target
-    @target = User.where.not(github_id: nil).find(params[:id])
+    @target = User.non_local.find(params[:id])
     Current.security_audit_context = Current.security_audit_context.merge(target_user_id: @target.id)
   end
 

@@ -58,9 +58,7 @@ class RepositoriesController < SuperglueController
 
   # @route POST /repositories/:github_id/poll (poll_repository)
   def poll
-    if LocalDevelopment.enabled?
-      return head :not_found if Current.user.github_id.present?
-
+    if LocalDevelopment.enabled? && Current.user.local? && !LocalDevelopment.unified_auth?
       repository = Repository.where(github_id: nil).find_by(id: params[:github_id])
       if repository.nil? || repository.installation_state != "active" ||
           !LocalDevelopment.repository_available?(repository.local_path, identity: repository.local_identity)
@@ -82,6 +80,8 @@ class RepositoriesController < SuperglueController
       repository.local_discovery.refresh!(requeue_pending: true)
       redirect_to repository_path(repository.route_id), status: :see_other
     else
+      return head :service_unavailable unless configuration&.installation_state == "active"
+
       configuration.discover_builds_later!(repository)
       head :accepted
     end
@@ -110,6 +110,8 @@ class RepositoriesController < SuperglueController
 
   # Keeps stored repository data available when the optional workflow check fails.
   def workflow_status(configuration)
+    return :unavailable unless configuration&.installation_state == "active"
+
     @repository.workflow_installation.status(configuration:)
   rescue GithubClient::Error
     :unavailable

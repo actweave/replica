@@ -137,7 +137,7 @@ class GithubAppConfiguration::Administration < ActiveRecord::AssociatedObject
 
   # Removed administrators and credentials cannot act using an earlier controller check.
   def authorize_browser!(actor, browser_session)
-    live_actor = User.where(id: actor&.id, hub_admin: true).where.not(github_id: nil).first
+    live_actor = User.hub_admins.where(id: actor&.id).first
     live_session = Session.find_by(id: browser_session&.id, user_id: live_actor&.id)
     raise Denied, :not_authorized if live_actor.nil? || live_session.nil? || LocalDevelopment.enabled?
     raise FreshAuthorization::Invalid if !FreshAuthorization.fresh?(live_session)

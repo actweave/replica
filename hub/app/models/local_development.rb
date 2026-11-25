@@ -17,6 +17,10 @@ class LocalDevelopment
     Rails.env.development? && ENV["REPLICA_LOCAL_MODE"] == "1"
   end
 
+  def self.unified_auth?
+    ENV["REPLICA_AUTH_MODE"] == "unified"
+  end
+
   # Keeps browser cookies from resolving the same database ID in the other mode.
   def self.session_cookie_key
     return "__Host-replica_hub_session" if Rails.env.production?

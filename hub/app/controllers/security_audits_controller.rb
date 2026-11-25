@@ -4,7 +4,7 @@ class SecurityAuditsController < SuperglueController
 
   # @route GET /security_audit (security_audit)
   def show
-    hub_admin = User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+    hub_admin = User.hub_admins.exists?(id: Current.user.id)
     return head :not_found if !hub_admin
 
     load_audit_scopes

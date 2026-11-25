@@ -112,6 +112,19 @@ class ShareLinkCreatorRevocationTest < ActiveSupport::TestCase
     assert_not @link.reload.available?
   end
 
+  test "a membership change invalidates a pending share authorization" do
+    external = users.create(github_id: nil, identity_kind: "external")
+    grant = @repository.repository_memberships.create!(user: external, role: "admin")
+    assert @repository.authorization.authorized?(external, minimum: :admin, fresh: true)
+    proof = @repository.authorization.share_link_creation_proof
+
+    grant.update!(role: "read")
+    assert_raises(ShareLinkCreatorRevocation::Changed) do
+      ShareLink.create_public!(prototype: prototypes.welcome, build: builds.welcome,
+        created_by: external, label: "Earlier permission", authorization_proof: proof)
+    end
+  end
+
   private
 
   def create_link(**extra)

@@ -1,4 +1,4 @@
-# Checks a user's current GitHub permission for one installed repository.
+# Resolves the user's effective access to one installed repository.
 class Repository::Authorization < ActiveRecord::AssociatedObject
   CACHE_TTL = 1.minute
   PERMISSION_LEVELS = { "none" => 0, "read" => 1, "write" => 2, "admin" => 3 }.freeze
@@ -19,32 +19,42 @@ class Repository::Authorization < ActiveRecord::AssociatedObject
     sufficient?(permission, minimum:)
   end
 
-  # Returns the user's current normalized GitHub permission.
+  # Reads local grants on every decision, including when a GitHub result is cached.
   def permission_for(
     user, fresh: false, configuration: GithubAppConfiguration.current,
     cache: Rails.cache, payload: nil
   )
-    return "none" if record.installation_state != "active"
-    if LocalDevelopment.enabled?
-      local_user = user&.persisted? && user.github_id.nil?
-      return local_user && record.local? &&
-        LocalDevelopment.repository_available?(record.local_path, identity: record.local_identity) ? "admin" : "none"
-    end
+    return "none" if record.installation_state != "active" || user.nil?
+    return local_permission(user) if LocalDevelopment.enabled?
+    return "none" if record.local? || (user.is_a?(User) && user.local?)
 
+    account = registered_user(user)
     if fresh
-      creator = registered_user(user)
-      @share_link_creation_proof = creator ? ShareLinkCreatorRevocation.proof_for(record, creator) : nil
-      fetch_permission(user, configuration)
+      @share_link_creation_proof = account && ShareLinkCreatorRevocation.proof_for(record, account)
+    end
+    return membership_role(account) if account&.external?
+
+    return "none" unless user.github_id
+
+    version = account&.current_membership_version unless fresh
+    role = membership_role(account)
+    github_permission = if fresh
+      fetch_permission(user, configuration, payload: nil, account:, role:)
     else
-      cache.fetch(cache_key(user), expires_in: CACHE_TTL) do
-        fetch_permission(user, configuration, payload:)
+      cache.fetch(cache_key(user, account, version), expires_in: CACHE_TTL) do
+        fetch_permission(user, configuration, payload:, account:, role:)
       end
     end
+    [ github_permission, role ].max_by { PERMISSION_LEVELS.fetch(_1) }
+  rescue GithubClient::Error
+    raise if role.nil? || role == "none"
+
+    role
   end
 
   # Avoids fetching selector permissions that are still cached.
-  def cached_permission(user, cache: Rails.cache)
-    cache.read(cache_key(user))
+  def cached_permission(user, cache: Rails.cache, version: user.current_membership_version)
+    cache.read(cache_key(user, user, version))
   end
 
   # Reports whether one normalized permission meets the required level.
@@ -54,8 +64,22 @@ class Repository::Authorization < ActiveRecord::AssociatedObject
 
   private
 
+  def local_permission(user)
+    return "none" unless user.is_a?(User) && user.persisted? && record.local?
+    return "none" unless LocalDevelopment.repository_available?(record.local_path, identity: record.local_identity)
+    return user.local? ? "admin" : "none" unless LocalDevelopment.unified_auth?
+
+    user.local? ? "none" : membership_role(user)
+  end
+
+  def membership_role(account)
+    return "none" unless account&.persisted?
+
+    RepositoryMembership.where(repository: record, user: account).pick(:role) || "none"
+  end
+
   # Reads effective permission and verifies GitHub returned the expected user.
-  def fetch_permission(user, configuration, payload: nil)
+  def fetch_permission(user, configuration, payload:, account:, role:)
     return "none" if configuration.nil? || configuration.installation_state != "active"
 
     raise payload if payload.is_a?(GithubClient::Error)
@@ -75,8 +99,7 @@ class Repository::Authorization < ActiveRecord::AssociatedObject
 
     permission = payload.fetch("permission")
     if permission == "none"
-      creator = registered_user(user)
-      ShareLinkCreatorRevocation.confirm_loss!(repository: record, user: creator) if creator
+      ShareLinkCreatorRevocation.confirm_loss!(repository: record, user: account) if account && role == "none"
       return "none"
     end
 
@@ -93,11 +116,13 @@ class Repository::Authorization < ActiveRecord::AssociatedObject
 
   # Resolves permission identities to saved creators before revoking their links.
   def registered_user(identity)
-    identity.is_a?(User) && identity.persisted? ? identity : User.find_by(github_id: identity.github_id)
+    return identity if identity.is_a?(User) && identity.persisted?
+
+    User.find_by(github_id: identity.github_id) if identity.github_id
   end
 
   # Separates cached permission by durable identities and repository state.
-  def cache_key(user)
-    [ "repository-permission", record.github_id, user.github_id, record.updated_at.to_f ]
+  def cache_key(user, account, version)
+    [ "repository-permission", record.cache_key_with_version, account&.id || "github-#{user.github_id}", version ]
   end
 end

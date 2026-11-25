@@ -5,9 +5,12 @@
 #
 #  id                      :integer          not null, primary key
 #  avatar_url              :string
+#  email                   :string
 #  hub_admin               :boolean          default(FALSE), not null
+#  identity_kind           :string           not null
 #  last_authenticated_at   :datetime         not null
 #  login                   :string           not null
+#  membership_version      :integer          default(0), not null
 #  name                    :string
 #  welcome_hidden          :boolean          default(FALSE), not null
 #  welcome_sign_in_pending :boolean          default(TRUE), not null
@@ -17,11 +20,13 @@
 #
 # Indexes
 #
+#  index_users_on_email               (email) UNIQUE WHERE email IS NOT NULL
 #  index_users_on_github_id           (github_id) UNIQUE
-#  index_users_on_one_local_identity  ((github_id IS NULL)) UNIQUE WHERE github_id IS NULL
+#  index_users_on_one_local_identity  (identity_kind) UNIQUE WHERE identity_kind = 'local'
 #
 # Check Constraints
 #
+#  users_identity_kind       ((identity_kind = 'github' AND github_id IS NOT NULL) OR (identity_kind IN ('local', 'external') AND github_id IS NULL))
 #  users_login_present       (length(trim(login)) > 0)
 #  users_positive_github_id  (github_id IS NULL OR github_id > 0)
 #
@@ -40,6 +45,8 @@ class User < ApplicationRecord
 
   LOCAL_AVATAR_URL = "/local-developer-avatar.svg"
 
+  has_many :user_identities, dependent: :delete_all
+  has_many :repository_memberships, dependent: :delete_all
   has_many :sessions, dependent: :delete_all
   has_many :branch_banner_dismissals, dependent: :delete_all
   has_many :prototype_introductions, dependent: :delete_all
@@ -58,15 +65,35 @@ class User < ApplicationRecord
     inverse_of: :resolved_by,
     dependent: :restrict_with_exception
 
+  scope :non_local, -> { where.not(identity_kind: "local") }
+  scope :hub_admins, -> { non_local.where(hub_admin: true) }
+
+  normalizes :email, with: -> { _1.strip.downcase.presence }
+  validates :email, uniqueness: true, format: URI::MailTo::EMAIL_REGEXP, allow_nil: true
+  validates :identity_kind, inclusion: { in: %w[local github external] }
+  before_validation(on: :create) { self.identity_kind ||= github_id ? "github" : "local" }
   validates :github_id, numericality: { only_integer: true, greater_than: 0 },
     uniqueness: true, allow_nil: true
-  validate :local_identity_is_allowed
+  validate :consistent_identity_kind
   validates :login, presence: true
-  validate :github_id_is_unchanged, on: :update
+  validate :identity_is_unchanged, on: :update
 
-  # Distinguishes the one local developer from GitHub-backed identities.
+  # Identifies the single local developer independently of other providers.
   def local?
-    github_id.nil?
+    identity_kind == "local"
+  end
+
+  # Read through the database even when a caller retains an older User instance.
+  def current_membership_version
+    self.class.where(id:).pick(:membership_version)
+  end
+
+  def external?
+    identity_kind == "external"
+  end
+
+  def hub_admin?
+    !local? && super
   end
 
   # Claims the first sign-in once across browser sessions without redirecting existing users.
@@ -89,8 +116,8 @@ class User < ApplicationRecord
   def change_hub_admin!(actor:, browser_session:, operation:)
     self.class.transaction do
       # Rails's SQLite write transaction locks before these live authorization reads.
-      live_actor = self.class.find_by(id: actor.id, hub_admin: true)
-      raise AdminRoleChangeDenied, :not_authorized if live_actor.nil? || live_actor.local?
+      live_actor = self.class.hub_admins.find_by(id: actor.id)
+      raise AdminRoleChangeDenied, :not_authorized if live_actor.nil?
 
       live_session = Session.find_by(id: browser_session&.id, user_id: live_actor.id)
       raise AdminRoleChangeDenied, :not_authorized if live_session.nil?
@@ -102,11 +129,12 @@ class User < ApplicationRecord
 
       desired_role = operation == "designate"
       raise AdminRoleChangeDenied, :role_changed if hub_admin? == desired_role
-      if !desired_role && self.class.where(hub_admin: true).where.not(github_id: nil).count <= 1
+      if !desired_role && self.class.hub_admins.count <= 1
         raise AdminRoleChangeDenied, :last_admin
       end
 
       update!(hub_admin: desired_role)
+      AuthAllowlistEntry.find_by(email:)&.update!(hub_admin: desired_role) if external? && email
       context = (Current.security_audit_context || {}).merge(session_id: live_session.id, target_user_id: id)
       SecurityAuditEvent.record! \
         action: "hub_admin.#{operation}",
@@ -145,7 +173,7 @@ class User < ApplicationRecord
     def local_developer!
       raise AdmissionDenied, "Local sign-in is disabled" if !LocalDevelopment.enabled?
 
-      user = find_or_initialize_by(github_id: nil)
+      user = find_or_initialize_by(identity_kind: "local")
       user.update! \
         login: "local",
         name: "Local developer",
@@ -204,12 +232,15 @@ class User < ApplicationRecord
   end
 
   # Prevents accidentally persisting a local-only account in production.
-  def local_identity_is_allowed
-    errors.add(:github_id, "is required") if github_id.nil? && !LocalDevelopment.enabled?
+  def consistent_identity_kind
+    errors.add(:github_id, "is required") if identity_kind == "github" && github_id.nil?
+    errors.add(:github_id, "must be empty") if identity_kind != "github" && github_id.present?
+    errors.add(:identity_kind, "requires local development") if local? && !LocalDevelopment.enabled?
   end
 
   # Keeps the durable GitHub identity from changing with mutable profile data.
-  def github_id_is_unchanged
+  def identity_is_unchanged
+    errors.add(:identity_kind, "cannot change") if will_save_change_to_identity_kind?
     errors.add(:github_id, "cannot change") if will_save_change_to_github_id?
   end
 end

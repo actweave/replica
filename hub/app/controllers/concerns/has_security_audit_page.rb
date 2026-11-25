@@ -7,7 +7,7 @@ module HasSecurityAuditPage
   # Choices require their own permission; readable repository navigation is not proof.
   def load_audit_scopes
     @audit_scopes = []
-    if User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+    if User.hub_admins.exists?(id: Current.user.id)
       @audit_scopes << { id: "hub", label: I18n.t("security_audit.hub_scope"), path: security_audit_path }
     end
     configuration = GithubAppConfiguration.current

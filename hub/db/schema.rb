@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_25_000000) do
   create_table "analytics_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -70,6 +70,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
     t.index ["uuid"], name: "index_analytics_events_on_uuid", unique: true
     t.check_constraint "json_valid(properties) AND json_type(properties) = 'object'", name: "analytics_events_properties"
     t.check_constraint "name IN ('prototype_registered', 'prototype_first_published', 'build_published', 'review_comment_created', 'review_reply_added', 'review_thread_resolved', 'review_thread_reopened')", name: "analytics_events_name"
+  end
+
+  create_table "auth_allowlist_entries", force: :cascade do |t|
+    t.string "email", null: false
+    t.boolean "hub_admin", default: false, null: false
+    t.integer "added_by_id"
+    t.string "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["added_by_id"], name: "index_auth_allowlist_entries_on_added_by_id"
+    t.index ["email"], name: "index_auth_allowlist_entries_on_email", unique: true
+  end
+
+  create_table "auth_allowlist_seeds", force: :cascade do |t|
+    t.string "email", null: false
+    t.boolean "hub_admin", null: false
+    t.index ["email", "hub_admin"], name: "index_auth_allowlist_seeds_on_email_and_hub_admin", unique: true
   end
 
   create_table "branch_banner_dismissals", force: :cascade do |t|
@@ -520,6 +537,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
     t.check_constraint "local_identity IS NULL OR local_path IS NOT NULL", name: "repositories_local_identity"
   end
 
+  create_table "repository_memberships", force: :cascade do |t|
+    t.integer "repository_id", null: false
+    t.integer "user_id", null: false
+    t.string "role", null: false
+    t.integer "granted_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["granted_by_id"], name: "index_repository_memberships_on_granted_by_id"
+    t.index ["repository_id", "user_id"], name: "index_repository_memberships_on_repository_id_and_user_id", unique: true
+    t.index ["repository_id"], name: "index_repository_memberships_on_repository_id"
+    t.index ["user_id"], name: "index_repository_memberships_on_user_id"
+    t.check_constraint "role IN ('read', 'write', 'admin')", name: "repository_memberships_role"
+  end
+
   create_table "review_comment_reactions", force: :cascade do |t|
     t.string "content", null: false
     t.datetime "created_at", null: false
@@ -671,6 +702,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
     t.check_constraint "revision >= 0", name: "sharing_settings_revision"
   end
 
+  create_table "user_identities", force: :cascade do |t|
+    t.integer "user_id", null: false
+    t.string "provider", null: false
+    t.string "issuer"
+    t.string "subject", null: false
+    t.string "email"
+    t.boolean "email_verified", default: false, null: false
+    t.datetime "last_signed_in_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["provider", "subject"], name: "index_user_identities_on_provider_and_subject", unique: true
+    t.index ["user_id"], name: "index_user_identities_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "avatar_url"
     t.datetime "created_at", null: false
@@ -682,8 +727,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
     t.boolean "hub_admin", default: false, null: false
     t.boolean "welcome_hidden", default: false, null: false
     t.boolean "welcome_sign_in_pending", default: true, null: false
-    t.index "(github_id IS NULL)", name: "index_users_on_one_local_identity", unique: true, where: "github_id IS NULL"
+    t.string "identity_kind", null: false
+    t.integer "membership_version", default: 0, null: false
+    t.string "email"
+    t.index ["email"], name: "index_users_on_email", unique: true, where: "email IS NOT NULL"
     t.index ["github_id"], name: "index_users_on_github_id", unique: true
+    t.index ["identity_kind"], name: "index_users_on_one_local_identity", unique: true, where: "identity_kind = 'local'"
+    t.check_constraint "(identity_kind = 'github' AND github_id IS NOT NULL) OR (identity_kind IN ('local', 'external') AND github_id IS NULL)", name: "users_identity_kind"
     t.check_constraint "github_id IS NULL OR github_id > 0", name: "users_positive_github_id"
     t.check_constraint "length(trim(login)) > 0", name: "users_login_present"
   end
@@ -770,6 +820,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
   add_foreign_key "analytics_deliveries", "repositories"
   add_foreign_key "analytics_destinations", "repositories"
   add_foreign_key "analytics_events", "repositories"
+  add_foreign_key "auth_allowlist_entries", "users", column: "added_by_id", on_delete: :nullify
   add_foreign_key "branch_banner_dismissals", "prototypes", on_delete: :cascade
   add_foreign_key "branch_banner_dismissals", "users", on_delete: :cascade
   add_foreign_key "builds", "prototypes"
@@ -803,6 +854,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
   add_foreign_key "prototypes", "builds", column: ["current_build_id", "id"], primary_key: ["id", "prototype_id"], on_delete: :restrict
   add_foreign_key "prototypes", "repositories"
   add_foreign_key "prototypes", "users", column: "author_id"
+  add_foreign_key "repository_memberships", "repositories"
+  add_foreign_key "repository_memberships", "users"
+  add_foreign_key "repository_memberships", "users", column: "granted_by_id", on_delete: :nullify
   add_foreign_key "review_comment_reactions", "review_comments", on_delete: :cascade
   add_foreign_key "review_comment_reactions", "users", on_delete: :restrict
   add_foreign_key "review_comments", "builds", column: ["build_id", "prototype_id"], primary_key: ["id", "prototype_id"], on_delete: :restrict
@@ -821,5 +875,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_07_220000) do
   add_foreign_key "share_links", "prototypes", on_delete: :restrict
   add_foreign_key "share_links", "users", column: "created_by_id", on_delete: :restrict
   add_foreign_key "share_preview_grants", "share_links", on_delete: :cascade
+  add_foreign_key "user_identities", "users"
   add_foreign_key "webhook_deliveries", "builds", on_delete: :nullify
 end

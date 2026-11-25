@@ -149,7 +149,7 @@ class CopilotConnection < ApplicationRecord
     # Reads bypass the request cache, so another request's committed role or Session change counts.
     def authorized!(actor:, browser_session:)
       uncached do
-        live_actor = User.where.not(github_id: nil).find_by(id: actor.id, hub_admin: true)
+        live_actor = User.hub_admins.find_by(id: actor.id)
         raise ChangeDenied, :not_authorized if live_actor.nil?
 
         live_session = Session.find_by(id: browser_session&.id, user_id: live_actor.id)
@@ -169,7 +169,7 @@ class CopilotConnection < ApplicationRecord
   # Whether Hub may make Copilot requests now: it has a token, Copilot has not refused that token,
   # and the person who connected Copilot is still a Hub administrator.
   def usable?
-    self.class.token.present? && !refused? && User.where(id: user_id, hub_admin: true).exists?
+    self.class.token.present? && !refused? && User.hub_admins.exists?(id: user_id)
   end
 
   # Whether Copilot refused the token Hub has now. A refusal of an earlier token does not count.

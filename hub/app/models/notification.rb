@@ -92,7 +92,7 @@ class Notification < ApplicationRecord
     return if comment.prototype.repository.local?
 
     owner = comment.prototype.author
-    return if owner.nil? || owner.github_id == comment.user.github_id
+    return if !owner&.github_id || owner == comment.user
 
     recipient = identity_for(owner)
     return if comment.comment_mentions.exists?(github_identity_id: recipient.id)
@@ -107,7 +107,7 @@ class Notification < ApplicationRecord
     mentioned_ids = reply.comment_mentions.pluck(:github_identity_id)
     recipients = participants(reply.root, actor: reply.user)
     owner = reply.prototype.author
-    recipients << identity_for(owner) if owner && owner.github_id != reply.user.github_id
+    recipients << identity_for(owner) if owner&.github_id && owner != reply.user
     recipients.uniq(&:github_id).reject { mentioned_ids.include?(_1.id) }.each do |recipient|
       record! comment: reply, actor: reply.user, recipient:, kind: "comment_reply", source_key: "reply/#{reply.id}"
     end
@@ -116,7 +116,7 @@ class Notification < ApplicationRecord
   # Sends a new reaction only to the message author, never to the reacting user.
   def self.record_reaction!(reaction)
     comment = reaction.review_comment
-    return if comment.prototype.repository.local? || comment.user.github_id == reaction.user.github_id
+    return if comment.prototype.repository.local? || !comment.user.github_id || comment.user == reaction.user
 
     recipient = identity_for(comment.user)
     record! comment:, actor: reaction.user, recipient:, kind: "comment_reaction", source_key: "reaction/#{reaction.id}"
@@ -160,7 +160,7 @@ class Notification < ApplicationRecord
   # Authors remain participants; mention-only recipients need a remaining live mention.
   def self.participants(root, actor:)
     comments = ReviewComment.where(id: root.id).or(ReviewComment.where(root_id: root.id))
-    authors = User.where(id: comments.select(:user_id)).where.not(github_id: actor.github_id)
+    authors = User.where(identity_kind: "github", id: comments.select(:user_id)).where.not(id: actor.id)
     identities = authors.map { identity_for(_1) }
     mentioned = GithubIdentity.joins(:comment_mentions)
       .where(comment_mentions: { review_comment_id: comments.not_deleted.select(:id) })

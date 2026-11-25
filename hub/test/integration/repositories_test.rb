@@ -127,6 +127,25 @@ class RepositoriesTest < ActionDispatch::IntegrationTest
     assert_requested :post, "#{GITHUB_API_URL}/app/installations/456/access_tokens", times: 1
   end
 
+  test "explicit grants invalidate cached GitHub repository choices for a retained user" do
+    user = users.create
+    repository = repositories.create
+    configuration = GithubAppConfiguration.current
+    stub_github_installation_token
+    stub_github_permissions([ repository_payload(repository.github_id, repository.name_with_owner) ],
+      { repository.github_id => nil })
+    cache = ActiveSupport::Cache::MemoryStore.new
+    controller = RepositoriesController.new
+    choices = -> { controller.send(:authorized_repositories, configuration, cache:) }
+    Current.set(session: Session.new(user:)) do
+      assert_empty choices.call
+      grant = repository.repository_memberships.create!(user:, role: "read")
+      assert_equal [ repository ], choices.call
+      grant.destroy!
+      assert_empty choices.call
+    end
+  end
+
   test "allows a writer to request current branch polling" do
     payload = repository_payload(2001, "github/prototype")
     stub_github_sign_in(repositories: [ payload ], permissions: { 2001 => "push" })

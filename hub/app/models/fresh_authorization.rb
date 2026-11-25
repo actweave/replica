@@ -83,7 +83,7 @@ class FreshAuthorization < ApplicationRecord
   def self.start!(credential:, purpose:, return_to: "/", pending_action: nil)
     transaction do
       live = live_credential(credential)
-      raise Invalid, "The initiating credential is no longer active." if live.nil? || live.user.local?
+      raise Invalid, "The initiating credential is no longer active." if live.nil? || !live.user.github_id
       if ADMIN_PURPOSES.include?(purpose.to_s) && (!live.is_a?(Session) || !live.user.hub_admin?)
         raise Invalid, "Hub administrator authorization is required."
       end
@@ -201,7 +201,6 @@ class FreshAuthorization < ApplicationRecord
   def authorized_scope?
     return true if !ADMIN_PURPOSES.include?(purpose)
 
-    credential_type == "Session" && User.where(id: user_id, hub_admin: true)
-      .where.not(github_id: nil).exists?
+    credential_type == "Session" && User.hub_admins.exists?(id: user_id)
   end
 end

@@ -108,6 +108,37 @@ class Repository::AuthorizationTest < ActiveSupport::TestCase
     assert_equal "read", repository.authorization.permission_for(user, fresh: true, configuration:, payload:)
   end
 
+  test "GitHub and explicit grants use the higher role and invalidate a warm cache" do
+    user = users.create
+    repository = repositories.create
+    configuration = installed_configuration
+    client = permission_client(user, "write")
+    configuration.define_singleton_method(:github_client) { client }
+    cache = ActiveSupport::Cache::MemoryStore.new
+    permission = -> { repository.authorization.permission_for(user, configuration:, cache:) }
+
+    grant = repository.repository_memberships.create!(user:, role: "read")
+    assert_equal "write", permission.call
+    grant.update!(role: "admin")
+    assert_equal "admin", permission.call
+    client = permission_client(user, "read")
+    grant.destroy!
+    assert_equal "read", permission.call
+  end
+
+  test "external admin access belongs only to the granted user and active repository" do
+    user = users.create(github_id: nil, identity_kind: "external")
+    other = users.create(github_id: nil, identity_kind: "external")
+    repository = repositories.create
+    grant = repository.repository_memberships.create!(user:, role: "admin")
+    assert repository.authorization.authorized?(user, minimum: :admin)
+    assert_not repository.authorization.authorized?(other)
+    grant.update!(role: "write")
+    assert_not repository.authorization.authorized?(user, minimum: :admin)
+    repository.update!(installation_state: "removed", removed_at: Time.current)
+    assert_not repository.authorization.authorized?(user)
+  end
+
   private
 
   def installed_configuration

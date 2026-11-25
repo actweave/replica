@@ -25,9 +25,28 @@ module HasRepositoryWorkspace
   # Returns active repositories from a cached list of current GitHub permissions.
   def authorized_repositories(configuration, including: nil, cache: Rails.cache)
     repositories = workspace_repositories
+    user = Current.user
+    if LocalDevelopment.enabled?
+      if LocalDevelopment.unified_auth?
+        return [] if user.local?
+        repositories = repositories.joins(:repository_memberships).where(repository_memberships: { user_id: user.id })
+      elsif !user.local?
+        return []
+      end
+      return repositories.select { LocalDevelopment.repository_available?(_1.local_path, identity: _1.local_identity) }
+    end
+    return [] if user.local?
+    if user.external?
+      return repositories.joins(:repository_memberships).where(repository_memberships: { user_id: user.id }).to_a
+    end
+
+    version = user.current_membership_version
+    # Only reuse the current page's check under the same membership revision.
+    including = nil if user.membership_version != version
     cache_key = [
       "repository-selector",
-      Current.user.github_id || Current.user.id,
+      user.id,
+      version,
       configuration&.cache_key_with_version,
       repositories.cache_key_with_version
     ]
@@ -35,9 +54,9 @@ module HasRepositoryWorkspace
     if route_ids.nil?
       entries = repositories.to_a
       payloads = {}
-      if !LocalDevelopment.enabled? && configuration&.installation_state == "active"
+      if configuration&.installation_state == "active"
         uncached = entries.reject do |repository|
-          repository == including || repository.authorization.cached_permission(Current.user, cache:).present?
+          repository == including || repository.authorization.cached_permission(user, cache:, version:).present?
         end
         if uncached.any?
           payloads = begin
@@ -51,15 +70,13 @@ module HasRepositoryWorkspace
         end
       end
       route_ids = entries.filter_map do |repository|
-        permission = if repository == including
-          "read"
-        else
-          repository.authorization.permission_for \
-            Current.user,
-            configuration:,
-            cache:,
-            payload: payloads[repository.github_id]
-        end
+        next repository.route_id if repository == including
+
+        permission = repository.authorization.permission_for \
+          user,
+          configuration:,
+          cache:,
+          payload: payloads[repository.github_id]
         if repository.authorization.sufficient?(permission, minimum: :read)
           repository.route_id
         end
@@ -73,11 +90,7 @@ module HasRepositoryWorkspace
       end
     end
 
-    authorized = if LocalDevelopment.enabled?
-      repositories.where(id: route_ids).to_a
-    else
-      repositories.where(github_id: route_ids).to_a
-    end
+    authorized = repositories.where(github_id: route_ids).to_a
     authorized << including if including && authorized.exclude?(including)
     authorized.sort_by(&:name_with_owner)
   end

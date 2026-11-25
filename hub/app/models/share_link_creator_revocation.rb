@@ -30,14 +30,14 @@ class ShareLinkCreatorRevocation < ApplicationRecord
   belongs_to :repository
   belongs_to :user
 
-  Proof = Data.define(:repository_id, :user_id, :revision)
+  Proof = Data.define(:repository_id, :user_id, :revision, :membership_version)
   class Changed < StandardError; end
 
   class << self
     # Captures the revocation boundary before an external permission lookup.
     def proof_for(repository, user)
       revision = where(repository:, user:).pick(:revision) || 0
-      Proof.new(repository_id: repository.id, user_id: user.id, revision:)
+      Proof.new(repository_id: repository.id, user_id: user.id, revision:, membership_version: user.current_membership_version)
     end
 
     # Must run inside creation's SQLite write transaction.

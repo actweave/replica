@@ -11,6 +11,6 @@ json.securityAuditLabel t("security_audit.heading")
 if @repository.authorization.sufficient?(@repository_permission, minimum: :admin)
   json.securityAuditPath repository_security_audit_path(@repository.route_id)
 else
-  hub_admin = User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+  hub_admin = User.hub_admins.exists?(id: Current.user.id)
   json.securityAuditPath(hub_admin ? security_audit_path : nil)
 end

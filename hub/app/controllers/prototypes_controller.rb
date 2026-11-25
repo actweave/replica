@@ -26,7 +26,7 @@ class PrototypesController < SuperglueController
     @can_edit_details = @prototype.registered? &&
       @repository.authorization.sufficient?(@repository_permission, minimum: :write) &&
       (@repository.local? || @prototype.author_id == Current.user.id ||
-        @prototype.builds.where(commit_author_github_id: Current.user.github_id).exists?)
+        (Current.user.github_id && @prototype.builds.exists?(commit_author_github_id: Current.user.github_id)))
     @show_prototype_info = false
     return if params[:view] == "minimized" ||
       PrototypeIntroduction.exists?(user: Current.user, prototype: @prototype)

@@ -34,6 +34,8 @@ class Repository::PrototypeCandidates < ActiveRecord::AssociatedObject
       return candidates.select { |prototype| eligible?(prototype, permission:, heads:) }
     end
 
+    return [] if user.external?
+
     candidates = candidates.to_a
     return [] if candidates.empty?
 

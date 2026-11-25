@@ -61,7 +61,7 @@ Controls who is permitted to authenticate via Email OTP or OIDC:
 - `hub_admin` (`boolean`, default `false`, not null)
 - `added_by_id` (nullable FK -> `users`)
 - `notes` (`string`, nullable)
-- Environment bootstrap (idempotent on boot/auth check, never overwriting revocations unless configured):
+- On application boot, Hub records each normalized address and configured grant in `auth_allowlist_seeds` alongside its first application. Editing or removing an allowlist entry survives a restart with the same environment. A bootstrap administrator receives the Hub role after verified sign-in.
   - `REPLICA_AUTH_ALLOWLIST_EMAILS`: comma-separated normalized emails seeded as allowlisted entries.
   - `REPLICA_AUTH_BOOTSTRAP_ADMIN_EMAILS`: comma-separated normalized emails seeded as allowlisted `hub_admin: true` entries.
 

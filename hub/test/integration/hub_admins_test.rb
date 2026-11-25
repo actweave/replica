@@ -183,7 +183,7 @@ class HubAdminsTest < ActionDispatch::IntegrationTest
     @target.destroy!
     change("designate")
     assert_equal I18n.t("hub_admins.errors.invalid_target"), flash[:alert]
-    @actor.update_columns(github_id: nil)
+    @actor.update_columns(identity_kind: "local", github_id: nil)
     patch hub_admin_path(@actor), params: { operation: "designate", confirmed: "1" }
     assert_redirected_to root_path
     assert_not User.exists?(@target.id)
@@ -257,7 +257,7 @@ class HubAdminsTest < ActionDispatch::IntegrationTest
     @target.update!(hub_admin: true)
     get candidates_hub_admins_path, as: :json
     assert_empty JSON.parse(response.body).fetch("users")
-    @target.update_columns(hub_admin: false, github_id: nil)
+    @target.update_columns(hub_admin: false, identity_kind: "local", github_id: nil)
     get candidates_hub_admins_path, as: :json
     assert_empty JSON.parse(response.body).fetch("users")
   end

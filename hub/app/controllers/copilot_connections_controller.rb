@@ -49,7 +49,7 @@ class CopilotConnectionsController < SuperglueController
 
   # Check the saved role before showing the connection or starting a GitHub check.
   def authorize_admin
-    return if User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+    return if User.hub_admins.exists?(id: Current.user.id)
 
     record_security_audit(outcome: "denied")
     @access_denied = true

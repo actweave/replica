@@ -1,6 +1,6 @@
 # The saved role gates the admin section, not the ordinary signed-in shell.
 hub_admin = Current.user &&
-  User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+  User.hub_admins.exists?(id: Current.user.id)
 if hub_admin && !@access_denied && !@ended
   json.administrationWorkspace do
     json.partial! \

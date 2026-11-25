@@ -48,7 +48,7 @@ class SharingSetting < ApplicationRecord
     # Serializes policy, role, freshness, revocations and audit in SQLite.
     def change!(actor:, browser_session:, operation:)
       transaction do
-        live_actor = User.where.not(github_id: nil).find_by(id: actor.id, hub_admin: true)
+        live_actor = User.hub_admins.find_by(id: actor.id)
         raise ChangeDenied, :not_authorized if live_actor.nil?
 
         live_session = Session.find_by(id: browser_session&.id, user_id: live_actor.id)

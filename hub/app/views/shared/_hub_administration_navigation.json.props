@@ -1,6 +1,6 @@
 # Reread the saved role so a cached account cannot keep a revoked entrypoint.
 hub_admin = Current.user &&
-  User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists? &&
+  User.hub_admins.exists?(id: Current.user.id) &&
   local_assigns.fetch(:administration_allowed, true)
 json.settingsNavigationLabel t("hub_administration_workspace.settings_navigation")
 json.feedbackLabel t("repository_workspace.feedback")

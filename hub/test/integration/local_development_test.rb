@@ -375,6 +375,25 @@ class LocalDevelopmentTest < ActionDispatch::IntegrationTest
     FileUtils.rm_rf(outside) if outside
   end
 
+  test "unified local repository access follows the grant and the live checkout identity" do
+    previous = ENV["REPLICA_AUTH_MODE"]
+    ENV["REPLICA_AUTH_MODE"] = "unified"
+    path = create_repository("one")
+    in_local_mode do
+      Repository::LocalDiscovery.register_repositories!
+      repository = Repository.active.sole
+      user = users.create(identity_kind: "external", github_id: nil)
+      repository.repository_memberships.create!(user:, role: "read")
+      assert repository.authorization.authorized?(user)
+      assert_not repository.authorization.authorized?(user, minimum: :write)
+      assert_not repository.authorization.authorized?(User.local_developer!)
+      git!(path, "config", LocalDevelopment::REPOSITORY_ID_KEY, SecureRandom.uuid)
+      assert_not repository.authorization.authorized?(user)
+    end
+  ensure
+    ENV["REPLICA_AUTH_MODE"] = previous
+  end
+
   test "sign-in registers multiple repositories without discovering builds" do
     create_repository("one")
     create_repository("two")

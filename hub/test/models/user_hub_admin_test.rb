@@ -72,9 +72,9 @@ class UserHubAdminTest < ActiveSupport::TestCase
   end
 
   test "local identities and unknown operations cannot gain a role" do
-    @target.update_columns(github_id: nil)
+    @target.update_columns(identity_kind: "local", github_id: nil)
     assert_raises(User::AdminRoleChangeDenied) { change("designate") }
-    @target.update_columns(github_id: 1002)
+    @target.update_columns(identity_kind: "github", github_id: 1002)
     error = assert_raises(User::AdminRoleChangeDenied) { change("anything") }
     assert_equal :invalid_operation, error.reason
     assert_not @target.reload.hub_admin?
@@ -107,7 +107,7 @@ class UserHubAdminTest < ActiveSupport::TestCase
 
   test "missing or local targets cannot partially designate a selection" do
     other = users.create(github_id: 1003, login: "other")
-    other.update_columns(github_id: nil)
+    other.update_columns(identity_kind: "local", github_id: nil)
     assert_raises(User::AdminRoleChangeDenied) { designate(@target, other) }
     assert_not @target.reload.hub_admin?
     other.destroy!

@@ -33,7 +33,7 @@ module SecurityRateLimiting
   def limit_hub_admin_mutation
     return if !ADMIN_MUTATIONS.fetch(controller_path, []).include?(action_name)
     return if Current.user.nil? ||
-      !User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists?
+      !User.hub_admins.exists?(id: Current.user.id)
 
     enforce_security_rate_limit(:hub_admin)
   end

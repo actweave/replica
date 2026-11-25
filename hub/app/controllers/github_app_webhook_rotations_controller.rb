@@ -35,7 +35,7 @@ class GithubAppWebhookRotationsController < SuperglueController
 
   # Use the same live normal administrator role as the existing management page.
   def authorize_admin
-    return if User.where(id: Current.user.id, hub_admin: true).where.not(github_id: nil).exists? &&
+    return if User.hub_admins.exists?(id: Current.user.id) &&
       !LocalDevelopment.enabled?
 
     deny_admin_access

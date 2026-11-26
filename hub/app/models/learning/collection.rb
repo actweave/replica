@@ -110,8 +110,10 @@ class Learning::Collection
 
   # Pins the authenticated account, keeping its mutable login only as display metadata.
   def author(user)
+    return { login: user.login, name: user.name, externalId: user.id } if user.external?
+
     local = @repository.local?
-    if local != user.github_id.nil?
+    if local != user.local?
       raise Learning::Error.new \
         "A reviewer's identity does not match this repository's source.",
         code: "invalid_input"

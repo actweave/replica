@@ -1,0 +1,11 @@
+en:
+  email_login:
+    sent: If this email is allowed, a verification code will arrive shortly.
+    invalid: This code could not be verified. Try again or request a new code.
+    email_label: Email address
+    code_label: Six-digit verification code
+    send_label: Send sign-in code
+    verify_label: Verify and sign in
+    restart_label: Request another code or change email
+    subject: Your Replica Hub sign-in code
+    body: "Your sign-in code is %{code}. It expires in ten minutes."

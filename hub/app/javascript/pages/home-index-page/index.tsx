@@ -6,6 +6,7 @@ import { HubAlert } from "@components/hub-alert"
 import { ReplicaLogo } from "@components/replica-logo"
 import type { HubResolvedColorMode } from "@hooks/use-hub-theme"
 
+import { EmailLoginForm } from "./email-login-form"
 import { AsciiGradient } from "./ascii-gradient"
 import type { HomeIndexPageData } from "./types"
 
@@ -89,50 +90,59 @@ export function HomeIndexPage({
         </header>
 
         <div className="home__body">
-          <form className="home__composition" action={data.signInPath} method="post">
-            <input type="hidden" name="authenticity_token" value={data.authenticityToken} />
+          <div className="home__composition">
+            <form action={data.signInPath ?? undefined} method="post">
+              <input type="hidden" name="authenticity_token" value={data.authenticityToken} />
 
-            <Hero
-              variant="gridline"
-              align="start"
-              enableAnimation
-              className="home__hero"
-              aria-labelledby={headingId}
-            >
-              <Hero.Label
-                animate
-                animationDelay={eyebrowSequence === 0 ? 1000 : 0}
-                initialText={previousEyebrowText}
-                className="home__eyebrow"
+              <Hero
+                variant="gridline"
+                align="start"
+                enableAnimation
+                className="home__hero"
+                aria-labelledby={headingId}
               >
-                {eyebrowAnimated ? eyebrowText : <span>{eyebrowText}</span>}
-              </Hero.Label>
+                <Hero.Label
+                  animate
+                  animationDelay={eyebrowSequence === 0 ? 1000 : 0}
+                  initialText={previousEyebrowText}
+                  className="home__eyebrow"
+                >
+                  {eyebrowAnimated ? eyebrowText : <span>{eyebrowText}</span>}
+                </Hero.Label>
 
-              <Hero.Heading id={headingId} size="2" className="home__heading">
-                {data.heading}
-              </Hero.Heading>
+                <Hero.Heading id={headingId} size="2" className="home__heading">
+                  {data.heading}
+                </Hero.Heading>
 
-              <Hero.Description className="home__description">{data.description}</Hero.Description>
+                <Hero.Description className="home__description">
+                  {data.description}
+                </Hero.Description>
 
-              {data.alert ? (
-                <div className="home__alert">
-                  <HubAlert title={data.alert} variant="warning" layout="compact" />
-                </div>
-              ) : null}
+                {data.alert ? (
+                  <div className="home__alert">
+                    <HubAlert title={data.alert} variant="warning" layout="compact" />
+                  </div>
+                ) : null}
 
-              {data.notice ? (
-                <div className="home__alert">
-                  <HubAlert title={data.notice} variant="success" layout="compact" />
-                </div>
-              ) : null}
+                {data.notice ? (
+                  <div className="home__alert">
+                    <HubAlert title={data.notice} variant="success" layout="compact" />
+                  </div>
+                ) : null}
 
-              <Hero.ButtonGroup className="home__actions">
-                <Button type="submit" variant="primary" leadingVisual={<SignInIcon />}>
-                  {data.signInLabel}
-                </Button>
-              </Hero.ButtonGroup>
-            </Hero>
-          </form>
+                {data.signInPath && (
+                  <Hero.ButtonGroup className="home__actions">
+                    <Button type="submit" variant="primary" leadingVisual={<SignInIcon />}>
+                      {data.signInLabel}
+                    </Button>
+                  </Hero.ButtonGroup>
+                )}
+              </Hero>
+            </form>
+            {data.emailLogin && (
+              <EmailLoginForm login={data.emailLogin} token={data.authenticityToken} />
+            )}
+          </div>
         </div>
 
         <footer className="home__footer">

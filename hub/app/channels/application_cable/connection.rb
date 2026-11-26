@@ -11,7 +11,7 @@ module ApplicationCable
 
       browser_session = Session.includes(:user).find_by \
         id: request.session[:authenticated_session_id]
-      self.current_user = browser_session&.user if browser_session&.user&.local? == LocalDevelopment.enabled?
+      self.current_user = browser_session.user if browser_session&.resumable?
       reject_unauthorized_connection if current_user.nil?
       @browser_session_id = browser_session.id
       self.credential_identity = browser_session.to_gid_param

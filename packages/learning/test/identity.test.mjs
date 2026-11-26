@@ -446,6 +446,25 @@ for (const [name, factory] of [
       assert.deepEqual((await store.recall(context)).memories, [])
     })
 
+    it("preserves an external reviewer's Hub identity across repository sources", async () => {
+      for (const scope of [SCOPE, { host: "local", repository: "repositories/42" }]) {
+        const { store, context, grant } = await setup(scope)
+        const log = snapshot({
+          repository: scope.repository,
+          authors: [
+            { login: "reviewer", externalId: 41 },
+            { login: "reviewer", externalId: 41 },
+          ],
+        })
+        await store.importHubReviewComments(context, log, { grantIds: [grant.id] })
+        const { events } = await store.queryObservations(context, { purpose: "instruction" })
+        const actors = events
+          .filter((event) => event.type === "human_comment")
+          .map((event) => event.actor.id)
+        assert.deepEqual([...new Set(actors)], ["hub-external:https://replica.example.com/41"])
+      }
+    })
+
     it("supports real local user IDs without fabricating GitHub identities", async () => {
       const scope = { host: "local", repository: "repositories/42" }
       const { store, context, grant } = await setup(scope)
@@ -720,6 +739,8 @@ for (const [name, factory] of [
         { githubId: 1.5 },
         { githubId: 2 ** 53 },
         { githubId: 41, localId: 1 },
+        { externalId: 1, githubId: 1 },
+        { externalId: "1" },
         { localId: null },
         { localId: "1" },
         { local: true },

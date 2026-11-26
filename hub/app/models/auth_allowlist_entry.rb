@@ -27,6 +27,22 @@ class AuthAllowlistEntry < ApplicationRecord
   normalizes :email, with: -> { _1.strip.downcase.presence }
   validates :email, presence: true, uniqueness: true, format: URI::MailTo::EMAIL_REGEXP
 
+  # Bind verified mailbox ownership to a stable account with a public, non-email login.
+  def admit_verified_email!
+    user = User.find_or_initialize_by(email:)
+    return unless user.new_record? || user.external?
+
+    if user.new_record?
+      user.identity_kind = "external"
+      user.login = "reviewer-#{SecureRandom.hex(8)}"
+    end
+    user.hub_admin = true if hub_admin?
+    user.update!(last_authenticated_at: Time.current)
+    identity = user.user_identities.find_or_initialize_by(provider: "email", subject: email)
+    identity.update!(email:, email_verified: true, last_signed_in_at: user.last_authenticated_at)
+    user
+  end
+
   # Applies each configured grant once. Later database edits survive restarts.
   def self.bootstrap!(env = ENV)
     transaction do

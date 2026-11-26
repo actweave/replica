@@ -13,6 +13,9 @@ development:
   clear_expired_security_audit:
     command: "SecurityAuditEvent.clear_expired!"
     schedule: every hour at minute 21
+  clear_expired_email_login_challenges:
+    command: "EmailLoginChallenge.where(expires_at: ..Time.current).in_batches.delete_all"
+    schedule: every hour at minute 20
   clear_expired_operator_enrollments:
     command: "HubAdminEnrollment.clear_expired!"
     schedule: every hour at minute 22
@@ -72,6 +75,9 @@ production:
   clear_expired_security_audit:
     command: "SecurityAuditEvent.clear_expired!"
     schedule: every hour at minute 21
+  clear_expired_email_login_challenges:
+    command: "EmailLoginChallenge.where(expires_at: ..Time.current).in_batches.delete_all"
+    schedule: every hour at minute 20
   clear_expired_operator_enrollments:
     command: "HubAdminEnrollment.clear_expired!"
     schedule: every hour at minute 22

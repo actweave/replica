@@ -187,6 +187,40 @@ describe("HomeIndexPage()", () => {
     expect(screen.getByRole("button", { name: "Sign in with GitHub" })).toBeInTheDocument()
   })
 
+  it("posts the mailbox and then the one-time code with the browser's CSRF token", () => {
+    const login = {
+      email: null,
+      challengePath: "/auth/email/challenges",
+      verifyPath: "/auth/email/verify",
+      restartPath: "/",
+      emailLabel: "Email address",
+      codeLabel: "Six-digit code",
+      sendLabel: "Send code",
+      verifyLabel: "Sign in",
+      restartLabel: "Request another code",
+    }
+    const data = { ...PAGE_DATA, signInPath: null, emailLogin: login }
+    const { rerender } = renderHome(data)
+    const email = screen.getByRole("textbox", { name: login.emailLabel })
+    expect(email).toHaveAttribute("name", "email")
+    expect(email.closest("form")).toHaveAttribute("action", login.challengePath)
+    expect(screen.queryByRole("button", { name: PAGE_DATA.signInLabel })).toBeNull()
+
+    rerender(
+      <HomeIndexPage
+        colorMode="dark"
+        data={{ ...data, emailLogin: { ...login, email: "reader@example.com" } }}
+      />,
+    )
+    const code = screen.getByRole("textbox", { name: login.codeLabel })
+    expect(code).toHaveAttribute("autoComplete", "one-time-code")
+    const form = code.closest("form")!
+    expect(form).toHaveAttribute("action", login.verifyPath)
+    expect(new FormData(form).get("email")).toBe("reader@example.com")
+    expect(new FormData(form).get("authenticity_token")).toBe(data.authenticityToken)
+    expect(screen.getByRole("link", { name: login.restartLabel })).toHaveAttribute("href", "/")
+  })
+
   it("offers local sign-in without a GitHub action", () => {
     renderHome({
       ...PAGE_DATA,

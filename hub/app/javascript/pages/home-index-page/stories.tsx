@@ -50,6 +50,44 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 
+const emailLogin = {
+  email: null,
+  challengePath: "/auth/email/challenges",
+  verifyPath: "/auth/email/verify",
+  restartPath: "/",
+  emailLabel: "Email address",
+  codeLabel: "Six-digit verification code",
+  sendLabel: "Send sign-in code",
+  verifyLabel: "Verify and sign in",
+  restartLabel: "Request another code or change email",
+}
+
+export const EmailSignIn: Story = {
+  args: { data: { ...data, signInPath: null, emailLogin } },
+}
+
+export const VerifyEmail: Story = {
+  args: {
+    data: {
+      ...data,
+      signInPath: null,
+      notice: "If this email is allowed, a verification code will arrive shortly.",
+      emailLogin: { ...emailLogin, email: "reviewer@example.com" },
+    },
+  },
+}
+
+export const InvalidEmailCode: Story = {
+  args: {
+    data: {
+      ...data,
+      signInPath: null,
+      alert: "This code could not be verified. Try again or request a new code.",
+      emailLogin: { ...emailLogin, email: "reviewer@example.com" },
+    },
+  },
+}
+
 export const AccessAlert: Story = {
   args: {
     data: {

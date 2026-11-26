@@ -1,4 +1,5 @@
 local_mode = LocalDevelopment.enabled?
+email_enabled = EmailLoginChallenge.enabled?
 
 json.pageTitle t("application.name")
 json.localMode local_mode
@@ -12,5 +13,25 @@ json.notice flash[:notice]
 json.signInLabel t(local_mode ? "home.index.local_sign_in" : "home.index.sign_in")
 json.pauseAnimationLabel t("home.index.pause_animation")
 json.resumeAnimationLabel t("home.index.resume_animation")
-json.signInPath(local_mode ? local_authentication_path : github_authentication_path)
+if local_mode && !LocalDevelopment.unified_auth?
+  json.signInPath local_authentication_path
+elsif GithubAppConfiguration.sign_in_enabled? && (!email_enabled || GithubAppConfiguration.configured?)
+  json.signInPath github_authentication_path
+else
+  json.signInPath nil
+end
+
+if email_enabled
+  json.emailLogin do
+    json.email flash[:email_login]
+    json.challengePath email_login_challenges_path
+    json.verifyPath verify_email_login_path
+    json.restartPath root_path
+    json.emailLabel t("email_login.email_label")
+    json.codeLabel t("email_login.code_label")
+    json.sendLabel t("email_login.send_label")
+    json.verifyLabel t("email_login.verify_label")
+    json.restartLabel t("email_login.restart_label")
+  end
+end
 json.authenticityToken form_authenticity_token

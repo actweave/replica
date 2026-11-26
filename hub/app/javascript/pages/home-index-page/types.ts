@@ -12,5 +12,16 @@ export interface HomeIndexPageData {
   pauseAnimationLabel: string
   resumeAnimationLabel: string
   signInLabel: string
-  signInPath: string
+  signInPath: string | null
+  emailLogin?: {
+    email: string | null
+    challengePath: string
+    verifyPath: string
+    restartPath: string
+    emailLabel: string
+    codeLabel: string
+    sendLabel: string
+    verifyLabel: string
+    restartLabel: string
+  }
 }

@@ -106,6 +106,13 @@ class GithubAppConfiguration < ApplicationRecord
       exists?(singleton_key: 1)
     end
 
+    # Unified sign-in exposes GitHub only when the operator opts in.
+    def sign_in_enabled?
+      return !LocalDevelopment.enabled? unless LocalDevelopment.unified_auth?
+
+      ENV["REPLICA_AUTH_GITHUB_ENABLED"] == "1" && configured?
+    end
+
     # Returns the single GitHub App configuration for this Hub.
     def current
       return if LocalDevelopment.enabled?

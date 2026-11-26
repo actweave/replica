@@ -22,14 +22,19 @@ class AccessManagementTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.parsed_body["data"]["repositories"].pluck("path"), @path
 
-    post auth_allowlist_entries_path, params: { email: " Reader@example.com " }
+    submitted_email = " Reader@Example.COM "
+    post auth_allowlist_entries_path, params: { email: submitted_email }
     entry = AuthAllowlistEntry.find_by!(email: "reader@example.com")
-    post @path, params: { recipient: entry.email, role: "read" }
+    post @path, params: { recipient: submitted_email, role: "read" }
+    grant = @a.repository_memberships.find_by!(auth_allowlist_entry: entry)
     assert_nil User.find_by(email: entry.email)
     get @path, as: :json
     assert response.parsed_body["data"]["rows"].sole["pending"]
     reader = open_session
     sign_in(reader, entry)
+    assert_equal User.find_by!(email: entry.email), grant.reload.user
+    assert_nil grant.auth_allowlist_entry_id
+    assert_equal "read", grant.role
     reader.get repository_path(@a.route_id), as: :json
     assert_equal [ @a.route_id.to_s ], reader.response.parsed_body["data"]["repositories"].pluck("id")
     reader.get repository_path(@b.route_id)
@@ -42,7 +47,6 @@ class AccessManagementTest < ActionDispatch::IntegrationTest
     reader.get auth_allowlist_entries_path
     assert_equal 403, reader.response.status
 
-    grant = RepositoryMembership.sole
     path = repository_membership_path(@a.route_id, grant)
     patch path, params: { role: "admin" }
     reader.get @path, as: :json
@@ -83,13 +87,14 @@ class AccessManagementTest < ActionDispatch::IntegrationTest
     sign_in(browser, second)
     browser.get auth_allowlist_entries_path, as: :json
     assert_equal 200, browser.response.status
-    post @path, params: { recipient: second.email, role: "admin" }
+    target = User.find_by!(email: second.email)
+    post @path, params: { recipient: " Second@Example.COM ", role: "admin" }
+    assert_equal "admin", @a.repository_memberships.find_by!(user: target).role
     delete auth_allowlist_entry_path(second)
     assert_empty @a.repository_memberships
-    assert_not User.find_by!(email: second.email).hub_admin?
+    assert_not target.reload.hub_admin?
     browser.get auth_allowlist_entries_path
     assert_equal root_url, browser.response.location
-    target = User.find_by!(email: second.email)
     patch hub_admin_path(target), params: { operation: "designate", confirmed: "1" }
     assert_not target.reload.hub_admin?
     assert_equal "succeeded", SecurityAuditEvent.where(action: "allowlist.destroy").last.outcome

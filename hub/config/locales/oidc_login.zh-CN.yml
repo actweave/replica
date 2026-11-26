@@ -1,0 +1,4 @@
+zh-CN:
+  oidc_login:
+    sign_in: "使用%{provider}登录"
+    failure: "无法验证此次登录。请重试或使用其他登录方式。"

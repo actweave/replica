@@ -221,6 +221,20 @@ describe("HomeIndexPage()", () => {
     expect(screen.getByRole("link", { name: login.restartLabel })).toHaveAttribute("href", "/")
   })
 
+  it("posts to the selected identity provider with the browser CSRF token", () => {
+    const oidcProviders = [
+      { label: "Sign in with Google", path: "/auth/oidc/google" },
+      { label: "Sign in with Example SSO", path: "/auth/oidc/example" },
+    ]
+    renderHome({ ...PAGE_DATA, signInPath: null, oidcProviders })
+    for (const { label, path } of oidcProviders) {
+      const form = screen.getByRole("button", { name: label }).closest("form")!
+      expect(form).toHaveAttribute("method", "post")
+      expect(form).toHaveAttribute("action", path)
+      expect(new FormData(form).get("authenticity_token")).toBe(PAGE_DATA.authenticityToken)
+    }
+  })
+
   it("offers local sign-in without a GitHub action", () => {
     renderHome({
       ...PAGE_DATA,

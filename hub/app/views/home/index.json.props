@@ -1,5 +1,6 @@
 local_mode = LocalDevelopment.enabled?
 email_enabled = EmailLoginChallenge.enabled?
+providers = OidcProvider.enabled.values
 
 json.pageTitle t("application.name")
 json.localMode local_mode
@@ -15,10 +16,17 @@ json.pauseAnimationLabel t("home.index.pause_animation")
 json.resumeAnimationLabel t("home.index.resume_animation")
 if local_mode && !LocalDevelopment.unified_auth?
   json.signInPath local_authentication_path
-elsif GithubAppConfiguration.sign_in_enabled? && (!email_enabled || GithubAppConfiguration.configured?)
+elsif GithubAppConfiguration.sign_in_enabled? && ((!email_enabled && providers.empty?) || GithubAppConfiguration.configured?)
   json.signInPath github_authentication_path
 else
   json.signInPath nil
+end
+
+json.oidcProviders do
+  json.array! providers do |provider|
+    json.label t("oidc_login.sign_in", provider: provider.display_name)
+    json.path oidc_authentication_path(provider.slug)
+  end
 end
 
 if email_enabled

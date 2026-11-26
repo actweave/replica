@@ -165,6 +165,8 @@ Configured via `REPLICA_OIDC_PROVIDERS_JSON` (JSON array in runtime environment/
 ]
 ```
 
+Register the callback `https://hub.example.com/auth/oidc/google/callback` with the provider, substituting the Hub origin and configured slug. Restart Hub after changing the registry. Each slug identifies one issuer. Hub rejects an existing subject if its issuer or normalized account email has changed. A verified external login cannot take over a local or GitHub account.
+
 ### Protocol & Security Requirements
 
 - Routes:

@@ -66,6 +66,20 @@ export const EmailSignIn: Story = {
   args: { data: { ...data, signInPath: null, emailLogin } },
 }
 
+export const IdentityProviders: Story = {
+  args: {
+    data: {
+      ...data,
+      signInPath: null,
+      emailLogin,
+      oidcProviders: [
+        { label: "Sign in with Google", path: "/auth/oidc/google" },
+        { label: "Sign in with Example SSO", path: "/auth/oidc/example" },
+      ],
+    },
+  },
+}
+
 export const VerifyEmail: Story = {
   args: {
     data: {

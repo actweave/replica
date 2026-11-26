@@ -15,16 +15,7 @@ class EmailAuthenticationsController < ApplicationController
   def verify
     destination = nil
     verified = EmailLoginChallenge.verify(email: @email, code: params[:code].to_s) do |user|
-      destination = authentication_return_to
-      start_new_session_for(user, fresh_authorized_at: Time.current)
-      show_welcome = user.consume_welcome_sign_in!
-      destination ||= if show_welcome
-        welcome_path
-      elsif user.hub_admin? && user.repository_memberships.empty?
-        hub_admins_path
-      else
-        repositories_path
-      end
+      destination = establish_external_session(user)
       record_security_audit(outcome: "succeeded", actor: user)
     end
     return redirect_to destination, status: :see_other if verified

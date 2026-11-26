@@ -82,6 +82,10 @@
   margin-block-start: 2rem;
 }
 
+.home__provider {
+  margin-block-start: 1rem;
+}
+
 .home__email-login {
   display: grid;
   gap: 0.75rem;

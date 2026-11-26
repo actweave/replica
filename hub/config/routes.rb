@@ -30,6 +30,8 @@ Rails.application.routes.draw do
     post "auth/github", to: "github_authentications#create", as: :github_authentication
     post "auth/email/challenges", to: "email_authentications#create", as: :email_login_challenges
     post "auth/email/verify", to: "email_authentications#verify", as: :verify_email_login
+    post "auth/oidc/:provider", to: "oidc_authentications#create", as: :oidc_authentication
+    get "auth/oidc/:provider/callback", to: "oidc_authentications#callback", as: :oidc_callback
     post "auth/local", to: "local_authentications#create", as: :local_authentication
     get "auth/github/callback", to: "github_authentications#callback", as: :github_authentication_callback
     get "setup/manual", to: "github_app_setup#manual", as: :manual_setup

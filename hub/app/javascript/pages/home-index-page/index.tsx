@@ -139,6 +139,14 @@ export function HomeIndexPage({
                 )}
               </Hero>
             </form>
+            {data.oidcProviders?.map(({ path, label }) => (
+              <form key={path} action={path} method="post" className="home__provider">
+                <input type="hidden" name="authenticity_token" value={data.authenticityToken} />
+                <Button type="submit" variant="secondary">
+                  {label}
+                </Button>
+              </form>
+            ))}
             {data.emailLogin && (
               <EmailLoginForm login={data.emailLogin} token={data.authenticityToken} />
             )}

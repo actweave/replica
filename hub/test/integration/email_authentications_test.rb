@@ -56,6 +56,14 @@ class EmailAuthenticationsTest < ActionDispatch::IntegrationTest
     assert_equal user, Session.sole.user
   end
 
+  test "a conflicting GitHub account leaves the verified code available" do
+    users.create(email: @entry.email)
+    request_code
+    assert_no_difference("Session.count") { verify(@code) }
+    assert_nil EmailLoginChallenge.sole.consumed_at
+    assert_empty UserIdentity.where(provider: "email", subject: @entry.email)
+  end
+
   test "five wrong attempts lock the challenge including against the correct code" do
     request_code
     wrong = @code == "000000" ? "000001" : "000000"

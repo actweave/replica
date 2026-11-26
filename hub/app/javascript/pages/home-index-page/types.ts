@@ -13,6 +13,7 @@ export interface HomeIndexPageData {
   resumeAnimationLabel: string
   signInLabel: string
   signInPath: string | null
+  oidcProviders?: { label: string; path: string }[]
   emailLogin?: {
     email: string | null
     challengePath: string

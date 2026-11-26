@@ -30,8 +30,12 @@ class AuthAllowlistEntry < ApplicationRecord
   validates :email, presence: true, uniqueness: true, format: URI::MailTo::EMAIL_REGEXP
 
   # Bind verified mailbox ownership to a stable account with a public, non-email login.
-  def admit_verified_email!
-    user = User.find_or_initialize_by(email:)
+  def admit_verified_email!(provider: "email", subject: email, issuer: nil)
+    identity = UserIdentity.find_or_initialize_by(provider:, subject:)
+    if identity.persisted?
+      return unless identity.issuer == issuer && identity.user.email == email
+    end
+    user = identity.user || User.find_or_initialize_by(email:)
     return unless user.new_record? || user.external?
 
     if user.new_record?
@@ -41,8 +45,7 @@ class AuthAllowlistEntry < ApplicationRecord
     user.hub_admin = true if hub_admin?
     user.update!(last_authenticated_at: Time.current)
     pending_memberships.each { _1.update!(user:, auth_allowlist_entry: nil) }
-    identity = user.user_identities.find_or_initialize_by(provider: "email", subject: email)
-    identity.update!(email:, email_verified: true, last_signed_in_at: user.last_authenticated_at)
+    identity.update!(user:, issuer:, email:, email_verified: true, last_signed_in_at: user.last_authenticated_at)
     user
   end
 

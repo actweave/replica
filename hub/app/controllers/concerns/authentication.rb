@@ -48,6 +48,18 @@ module Authentication
     url_from(value)
   end
 
+  # Consume the return location before rotating the cookie after verified external sign-in.
+  def establish_external_session(user, generation: SessionRevocation.current.generation)
+    destination = authentication_return_to
+    start_new_session_for(user, fresh_authorized_at: Time.current, generation:)
+    show_welcome = user.consume_welcome_sign_in!
+    return destination if destination
+    return welcome_path if show_welcome
+    return hub_admins_path if user.hub_admin? && user.repository_memberships.empty?
+
+    repositories_path
+  end
+
   # Rotates the encrypted cookie and records a revocable browser session.
   def start_new_session_for(user, fresh_authorized_at: nil,
     generation: SessionRevocation.current.generation, configuration_id: nil, credential_revision: nil)

@@ -77,10 +77,10 @@ class EmailLoginChallenge < ApplicationRecord
         next false
       end
 
-      challenge.update!(consumed_at: Time.current)
       user = entry.admit_verified_email!
       next false unless user
 
+      challenge.update!(consumed_at: Time.current)
       yield user
       true
     end

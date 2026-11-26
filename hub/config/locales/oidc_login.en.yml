@@ -1,0 +1,4 @@
+en:
+  oidc_login:
+    sign_in: "Sign in with %{provider}"
+    failure: "Sign-in could not be verified. Start again or use another sign-in method."

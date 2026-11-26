@@ -57,6 +57,8 @@ The `Hub/Design/Banner inventory` story compares the repository workflow panel's
 
 `Hub/Pages/Security/Hub administrators` lists administrators only. **Add administrator** opens the searchable multi-select dialog with synthetic Hub users. `Hub/Features/Hub Administrators/Add administrators` covers empty, single, multiple, loading, and failed searches. Selection and confirmation work in these stories, but form submission is blocked and no roles are saved.
 
+The **Access management** stories show email admission in Hub administration and pending and active grants in repository settings. The members story uses the repository administrator’s sidebar.
+
 ## Component usage
 
 Open **Used in** below a component's story to see its direct production consumers and the pages or application surfaces reached through those consumers. Counts are JSX source locations, including repeated tags on one line, not runtime instances. Each consumer lists its source lines; related story links use the current Storybook index and navigate the parent Storybook document. GitHub source links open `main` in a new tab and can differ from local edits. Components without consumers show an explicit empty state. Stories without a local `component` in their default metadata show that usage is unavailable rather than implying a zero count.

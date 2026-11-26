@@ -6,6 +6,7 @@ export interface HubAdminsPageData extends HubAdministrationPageData {
   emptyLabel: string
   nextLabel: string
   nextPath: string | null
+  allowlistLink?: { label: string; path: string }
   addLabel: string
   administratorsLabel: string | null
   addAdministrator: AddHubAdministratorsData | null

@@ -5,7 +5,7 @@ json.description t("hub_admins.confirmation.#{@operation}.description")
 json.target do
   json.login @target.login
   json.name @target.name
-  json.identity t("hub_admins.identity", github_id: @target.github_id, id: @target.id)
+  json.identity t(@target.external? ? "access_management.external_identity" : "hub_admins.identity", github_id: @target.github_id, id: @target.id)
 end
 json.operation @operation
 json.submitPath hub_admin_path(@target)
@@ -13,5 +13,5 @@ json.submitLabel t("hub_admins.#{@operation}")
 json.confirmLabel t("hub_admins.confirm")
 json.cancelLabel t("hub_admins.cancel")
 json.cancelPath hub_admins_path
-json.verification t("hub_admins.verification")
+json.verification t(Current.user.external? ? "access_management.verification" : "hub_admins.verification")
 json.blockedLabel(@last_admin ? t("hub_admins.errors.last_admin") : nil)

@@ -1,0 +1,7 @@
+json.partial! partial: "hub_admins/navigation"
+json.copy do
+  %w[email recipient admin role read write admin_role add grant save remove cancel confirm pending empty
+    repositories verification remove_email remove_grant].each do |key|
+    json.set! key.camelize(:lower), t("access_management.#{key}")
+  end
+end

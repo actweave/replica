@@ -35,6 +35,7 @@ export interface WorkspaceSidebarData extends WorkspaceAccountData, RepositoryIn
     | "learnings"
     | "security"
     | "audit"
+    | "members"
     | "admins"
     | "sharing"
     | "sessions"
@@ -48,6 +49,8 @@ export interface WorkspaceSidebarData extends WorkspaceAccountData, RepositoryIn
     label: string
     path: string
   }>
+  membersLabel?: string
+  membersPath?: string
   securityAuditLabel?: string
   securityAuditPath?: string | null
 }

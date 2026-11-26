@@ -7,6 +7,10 @@ json.learningsLabel t("learnings.heading")
 json.learningsPath \
   (@repository.authorization.sufficient?(@repository_permission, minimum: :admin) &&
     Learning.available_for?(@repository) ? repository_learnings_path(@repository.route_id) : nil)
+if !Current.user.local? && (Current.user.hub_admin? || @repository_permission == "admin")
+  json.membersLabel t("access_management.members")
+  json.membersPath repository_memberships_path(@repository.route_id)
+end
 json.securityAuditLabel t("security_audit.heading")
 if @repository.authorization.sufficient?(@repository_permission, minimum: :admin)
   json.securityAuditPath repository_security_audit_path(@repository.route_id)

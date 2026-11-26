@@ -26,6 +26,11 @@ export function HubAdminsPage({
           <Heading as="h2" size="6">
             {data.administratorsLabel}
           </Heading>
+          {data.allowlistLink && (
+            <Button as="a" href={data.allowlistLink.path}>
+              {data.allowlistLink.label}
+            </Button>
+          )}
           <Button ref={trigger} type="button" variant="primary" onClick={() => setAdding(true)}>
             {data.addLabel}
           </Button>

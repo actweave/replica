@@ -1,0 +1,15 @@
+json.partial! partial: "shared/access_management"
+json.kind "members"
+json.pageTitle t("access_management.members")
+json.heading t("access_management.members")
+json.description t("access_management.membership", repository: @repository.name_with_owner)
+json.submitPath repository_memberships_path(@repository.route_id)
+json.rows do
+  json.array! @memberships do |membership|
+    json.id membership.id
+    json.label membership.user&.email || membership.user&.login || membership.auth_allowlist_entry.email
+    json.role membership.role
+    json.pending membership.user_id.nil?
+    json.path repository_membership_path(@repository.route_id, membership)
+  end
+end

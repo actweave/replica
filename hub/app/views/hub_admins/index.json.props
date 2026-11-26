@@ -10,6 +10,7 @@ json.administratorsLabel @access_denied ? nil : t("hub_admins.count", count: @ad
 if @access_denied
   json.addAdministrator nil
 else
+  json.allowlistLink({ label: t("access_management.allowlist"), path: auth_allowlist_entries_path })
   json.addAdministrator do
     json.submitPath hub_admins_path
     json.searchPath candidates_hub_admins_path
@@ -33,7 +34,7 @@ json.users do
     json.id user.id
     json.login user.login
     json.name user.name
-    json.identity t("hub_admins.identity", github_id: user.github_id, id: user.id)
+    json.identity t(user.external? ? "access_management.external_identity" : "hub_admins.identity", github_id: user.github_id, id: user.id)
     json.role t("hub_admins.admin")
     json.actionLabel t("hub_admins.revoke")
     json.confirmationPath edit_hub_admin_path(user)

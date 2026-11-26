@@ -128,6 +128,9 @@ class User < ApplicationRecord
       raise AdminRoleChangeDenied, :invalid_operation if !operation.in?(%w[designate revoke])
 
       desired_role = operation == "designate"
+      if desired_role && external? && !AuthAllowlistEntry.exists?(email:)
+        raise AdminRoleChangeDenied, :invalid_target
+      end
       raise AdminRoleChangeDenied, :role_changed if hub_admin? == desired_role
       if !desired_role && self.class.hub_admins.count <= 1
         raise AdminRoleChangeDenied, :last_admin

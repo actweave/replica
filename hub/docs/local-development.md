@@ -15,6 +15,23 @@ On the first start, Hub copies the Minimal app and shared Replica tooling into `
 
 Open <http://replica.localhost:19500> and choose **Open local Hub**. The local identity can view and change the configured local repositories; it does not represent a GitHub user or test GitHub permissions. Hub discovers the three example branches within about a minute and queues a Build for each. Reload the repository page to see three separate alerts saying Hub detected each branch locally. Choose **Add to Hub** on an alert to register that branch immediately with its branch name as its title. Each root page is taller than the desktop and narrow capture viewports, so the shared local Build pipeline captures full-page screenshots. Registered branches show their cards in the gallery, and **Manage prototypes** lets you edit their titles and descriptions.
 
+## Sign in with email or OIDC
+
+To exercise production sign-in against filesystem repositories, export the following settings in the shell that starts Hub. Substitute the administrator's address.
+
+```sh
+export REPLICA_LOCAL_MODE=1 REPLICA_AUTH_MODE=unified
+export REPLICA_AUTH_ALLOWLIST_EMAILS=admin@example.com
+export REPLICA_AUTH_BOOTSTRAP_ADMIN_EMAILS=admin@example.com
+bin/devcontainer dev
+```
+
+Open the Hub in your browser and request a six-digit email code. In development the job worker logs the code when no Resend key is configured. For email delivery, export `RESEND_API_KEY` and a verified `RESEND_FROM_EMAIL` before startup. To offer OIDC, also export [the provider registry](../../docs/actweave-auth-architecture.md#5-generic-oidc-authentication) and register the local callback with the issuer. Restart the development processes after changing these settings. Keep secrets in your shell environment or secret manager.
+
+Open **Hub administrators → Email allowlist**, choose a discovered repository, and grant the signed-in address a role. A Hub administrator can manage grants before gaining access to any repository content. Verify the selector lists the granted repository and that a direct link to another repository returns 404. The worker continues scanning the same local Git checkouts.
+
+## Review local branches
+
 Hub checks committed local branches once a minute and creates a Build when the default branch or a non-default branch points to a new commit. Reload the repository page after the scan to see the result. Hub saves when it first observes a candidate branch head or sees that head change. For 12 hours after that observation, an unregistered branch offers **Add to Hub** in the gallery. Refreshing or restarting Hub does not reset an unchanged head's age, and commit dates never count as local activity. On upgrade, existing local branches receive their first saved observation on the next scan without replacing their Builds or metadata. Registered and deleted branches do not appear in the alerts.
 
 A discovered branch stays out of the gallery until you add it through an alert or **Manage prototypes**. Older branches remain available on the management page, where you can give them a name and optional description before adding them. Builds and direct review links remain available before registration. Hub builds an isolated checkout of the exact commit, so uncommitted edits do not appear in the Build. The existing package checks, artifact storage, preview origins, and review comments remain in use. A failed build stays in history with its error; an unchanged branch does not trigger another Build.

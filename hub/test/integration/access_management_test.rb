@@ -100,6 +100,17 @@ class AccessManagementTest < ActionDispatch::IntegrationTest
     assert_equal "succeeded", SecurityAuditEvent.where(action: "allowlist.destroy").last.outcome
   end
 
+  test "a removed external account cannot receive a grant by email or user ID" do
+    entry = AuthAllowlistEntry.create!(email: "former@example.com")
+    sign_in(open_session, entry)
+    user = User.find_by!(email: entry.email)
+    delete auth_allowlist_entry_path(entry)
+    [ user.email, user.id.to_s ].each do |recipient|
+      assert_no_difference("RepositoryMembership.count") { post @path, params: { recipient:, role: "read" } }
+      assert_equal "denied", SecurityAuditEvent.where(action: "repository_membership.create").last.outcome
+    end
+  end
+
   test "stale external browser signs in again before manually submitting its change" do
     Session.sole.update!(fresh_authorized_at: 6.minutes.ago)
     sign_in(open_session, @admin)

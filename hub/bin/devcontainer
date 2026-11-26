@@ -35,11 +35,22 @@ ensure_cli_image() {
 run_cli() {
   tty_flag=""
   if [ -t 0 ] && [ -t 1 ]; then tty_flag="-t"; fi
+  if [ "$1" = exec ]; then
+    # Pass operator settings by name. The CLI resolves remoteEnv for this invocation.
+    set -- "$CLI_IMAGE" "$@"
+    for name in REPLICA_BOOTSTRAP_SECRET REPLICA_AUTH_MODE REPLICA_AUTH_EMAIL_ENABLED \
+      REPLICA_AUTH_GITHUB_ENABLED REPLICA_AUTH_ALLOWLIST_EMAILS REPLICA_AUTH_BOOTSTRAP_ADMIN_EMAILS \
+      RESEND_API_KEY RESEND_FROM_EMAIL REPLICA_OIDC_PROVIDERS_JSON; do
+      set -- --env "$name" "$@"
+    done
+  else
+    set -- "$CLI_IMAGE" "$@"
+  fi
   docker run --rm -i $tty_flag \
     --mount "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock" \
     --mount "type=bind,source=$APP_ROOT,target=$APP_ROOT" \
     --workdir / \
-    "$CLI_IMAGE" "$@"
+    "$@"
 }
 
 up() {
@@ -53,13 +64,7 @@ up() {
 
 exec_in_container() {
   if [ "${REPLICA_LOCAL_MODE+x}" = x ]; then
-    set -- "REPLICA_LOCAL_MODE=$REPLICA_LOCAL_MODE" "$@"
-  fi
-  if [ "${REPLICA_BOOTSTRAP_SECRET+x}" = x ]; then
-    set -- "REPLICA_BOOTSTRAP_SECRET=$REPLICA_BOOTSTRAP_SECRET" "$@"
-  fi
-  if [ "${REPLICA_LOCAL_MODE+x}" = x ] || [ "${REPLICA_BOOTSTRAP_SECRET+x}" = x ]; then
-    set -- env "$@"
+    set -- env "REPLICA_LOCAL_MODE=$REPLICA_LOCAL_MODE" "$@"
   fi
   run_cli exec --workspace-folder "$APP_ROOT" "$@"
 }

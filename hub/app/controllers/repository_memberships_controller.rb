@@ -14,10 +14,12 @@ class RepositoryMembershipsController < SuperglueController
     return reject_change(:unknown_recipient) if recipient.bytesize > 254
     if recipient.match?(/\A[1-9]\d{0,17}\z/)
       user = User.non_local.find_by(id: recipient)
+      entry = AuthAllowlistEntry.find_by(email: user.email) if user&.external?
     else
       entry = AuthAllowlistEntry.find_by(email: recipient)
       user = User.non_local.find_by(email: recipient)
     end
+    return reject_change(:unknown_recipient) if user&.external? && entry.nil?
     return reject_change(:unknown_recipient) unless user || entry
 
     membership = @repository.repository_memberships.create!(user:, auth_allowlist_entry: user ? nil : entry,

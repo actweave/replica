@@ -36,7 +36,10 @@ class HubAdminsController < SuperglueController
     end
 
     query = params[:query].to_s.strip
-    relation = User.non_local.where(hub_admin: false)
+    eligible = User.where(identity_kind: "github").or(
+      User.where(identity_kind: "external", email: AuthAllowlistEntry.select(:email))
+    )
+    relation = eligible.where(hub_admin: false)
     if query.present?
       pattern = "%#{User.sanitize_sql_like(query.first(100))}%"
       relation = relation.where("login LIKE :query ESCAPE '\\' OR name LIKE :query ESCAPE '\\'", query: pattern)

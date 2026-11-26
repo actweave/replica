@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_26_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_26_010000) do
   create_table "analytics_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -553,15 +553,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_26_000000) do
 
   create_table "repository_memberships", force: :cascade do |t|
     t.integer "repository_id", null: false
-    t.integer "user_id", null: false
+    t.integer "user_id"
     t.string "role", null: false
     t.integer "granted_by_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "auth_allowlist_entry_id"
+    t.index ["auth_allowlist_entry_id"], name: "index_repository_memberships_on_auth_allowlist_entry_id"
     t.index ["granted_by_id"], name: "index_repository_memberships_on_granted_by_id"
+    t.index ["repository_id", "auth_allowlist_entry_id"], name: "index_pending_repository_grants", unique: true, where: "auth_allowlist_entry_id IS NOT NULL"
     t.index ["repository_id", "user_id"], name: "index_repository_memberships_on_repository_id_and_user_id", unique: true
     t.index ["repository_id"], name: "index_repository_memberships_on_repository_id"
     t.index ["user_id"], name: "index_repository_memberships_on_user_id"
+    t.check_constraint "(user_id IS NULL) != (auth_allowlist_entry_id IS NULL)", name: "repository_memberships_one_recipient"
     t.check_constraint "role IN ('read', 'write', 'admin')", name: "repository_memberships_role"
   end
 
@@ -868,6 +872,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_26_000000) do
   add_foreign_key "prototypes", "builds", column: ["current_build_id", "id"], primary_key: ["id", "prototype_id"], on_delete: :restrict
   add_foreign_key "prototypes", "repositories"
   add_foreign_key "prototypes", "users", column: "author_id"
+  add_foreign_key "repository_memberships", "auth_allowlist_entries", on_delete: :cascade
   add_foreign_key "repository_memberships", "repositories"
   add_foreign_key "repository_memberships", "users"
   add_foreign_key "repository_memberships", "users", column: "granted_by_id", on_delete: :nullify

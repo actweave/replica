@@ -25,6 +25,7 @@ const data: HubAdminsPageData = {
   emptyLabel: "No Hub administrators are available.",
   nextLabel: "Next page",
   nextPath: null,
+  allowlistLink: { label: "Email allowlist", path: "/auth_allowlist_entries" },
   addLabel: "Add administrator",
   administratorsLabel: "0 administrators",
   addAdministrator: addHubAdministratorsData,

@@ -24,6 +24,8 @@
 class AuthAllowlistEntry < ApplicationRecord
   belongs_to :added_by, class_name: "User", optional: true
 
+  has_many :pending_memberships, class_name: "RepositoryMembership", dependent: :delete_all
+
   normalizes :email, with: -> { _1.strip.downcase.presence }
   validates :email, presence: true, uniqueness: true, format: URI::MailTo::EMAIL_REGEXP
 
@@ -38,6 +40,7 @@ class AuthAllowlistEntry < ApplicationRecord
     end
     user.hub_admin = true if hub_admin?
     user.update!(last_authenticated_at: Time.current)
+    pending_memberships.each { _1.update!(user:, auth_allowlist_entry: nil) }
     identity = user.user_identities.find_or_initialize_by(provider: "email", subject: email)
     identity.update!(email:, email_verified: true, last_signed_in_at: user.last_authenticated_at)
     user

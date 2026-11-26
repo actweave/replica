@@ -21,7 +21,9 @@ repository = workspace.fetch(:repository)
 json.partial! \
   partial: "shared/notification_navigation",
   locals: { context_repository: repository }
-json.repositoryUnavailableMessage workspace.fetch(:error)
+unless controller_path == "repository_memberships" && Current.user.hub_admin? && repository.nil? && !@repository_navigation_unavailable
+  json.repositoryUnavailableMessage workspace.fetch(:error)
+end
 if repository
   json.repository do
     json.partial! \
@@ -34,6 +36,10 @@ end
 json.partial! \
   partial: "shared/hub_administration_navigation",
   locals: { administration_allowed: !@access_denied, context_repository: repository }
+if repository && !Current.user.local? && (Current.user.hub_admin? || workspace.fetch(:permission) == "admin")
+  json.membersLabel t("access_management.members")
+  json.membersPath repository_memberships_path(repository.route_id)
+end
 json.securityAuditLabel t("security_audit.heading")
 hub_admin = !@access_denied &&
   User.hub_admins.exists?(id: Current.user.id)

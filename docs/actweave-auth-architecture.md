@@ -75,6 +75,10 @@ Explicit per-repository access grants:
 - `granted_by_id` (nullable FK -> `users`)
 - Unique index on `(repository_id, user_id)`.
 
+- Before a recipient's first verified sign-in, a membership references its allowlist entry instead of a user. Sign-in moves those grants to the verified account atomically.
+- Open **Hub administrators → Email allowlist** to add or remove addresses and manage grants in active repositories. Repository admins can open **Repository members** in repository settings. Removing an external address ends its sessions and removes its explicit grants. An active Hub administrator cannot remove the last active administrator.
+- Changes require verification on the current browser Session within five minutes. A stale browser signs in again, returns to the management page and must resubmit the change. A Hub administrator can manage grants without gaining access to repository content.
+
 ### 2.5 `email_login_challenges`
 
 Short-lived one-time verification codes for Resend email login:

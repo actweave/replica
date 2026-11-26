@@ -37,7 +37,7 @@ class SecurityAuditEvent < ApplicationRecord
   OUTCOMES = %w[succeeded denied failed].freeze
   CONTEXT_IDS = %w[
     session_id canvas_grant_id canvas_pairing_id share_link_id
-    analytics_destination_id github_app_configuration_id target_user_id
+    analytics_destination_id github_app_configuration_id target_user_id allowlist_entry_id
   ].freeze
   SOURCES = %w[browser canvas command bootstrap].freeze
   DEVICE_FAMILIES = %w[desktop mobile unknown].freeze

@@ -74,6 +74,15 @@ module Authentication
       fresh_authorized_at:
   end
 
+  # A stale browser must sign in again and explicitly resubmit the change.
+  def request_new_sign_in(return_to)
+    record_security_audit(outcome: "denied") if security_audit_action
+    terminate_session
+    session[:authentication_return_to] = return_to
+    redirect_to root_path, alert: t("access_management.sign_in_again"), status: :see_other
+    false
+  end
+
   # Revokes the current database session and clears its cookie.
   def terminate_session
     resume_session

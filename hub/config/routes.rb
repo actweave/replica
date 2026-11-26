@@ -46,6 +46,7 @@ Rails.application.routes.draw do
     post "operator/enrollment", to: "hub_admin_enrollments#create"
     resource :security_audit, only: :show, controller: "security_audits"
     resource :session_revocation, only: %i[show create]
+    resources :auth_allowlist_entries, only: %i[index create destroy]
     resources :hub_admins, only: %i[index create edit update], constraints: { id: /\d+/ } do
       get :candidates, on: :collection
     end
@@ -102,6 +103,7 @@ Rails.application.routes.draw do
       end
     end
     resources :repositories, only: %i[index show], param: :github_id, constraints: { github_id: /\d+/ } do
+      resources :memberships, only: %i[index create update destroy], controller: "repository_memberships"
       resource :security_audit, only: :show, controller: "repository_security_audits"
       post :poll, on: :member
       resource :analytics, only: :show, controller: "analytics" do

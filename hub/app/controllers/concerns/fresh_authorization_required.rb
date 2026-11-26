@@ -14,6 +14,10 @@ module FreshAuthorizationRequired
     credential = Current.canvas_grant || Current.session
     return true if FreshAuthorization.fresh?(credential)
 
+    if credential.is_a?(Session) && credential.user.external?
+      return request_new_sign_in(return_to)
+    end
+
     record_security_audit(outcome: "denied") if security_audit_action
     pending_action = FreshAuthorization::Continuation.capture(request, params, purpose:) if !Current.canvas_grant
     challenge = FreshAuthorization.start! \

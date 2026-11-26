@@ -88,6 +88,12 @@ export function WorkspaceSidebar({
       icon: administrationIcons[link.section],
     })),
     {
+      label: data.membersLabel,
+      path: data.membersPath,
+      section: "members",
+      icon: PeopleIcon,
+    },
+    {
       label: data.securityAuditLabel,
       path: data.securityAuditPath,
       section: "security",

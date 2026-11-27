@@ -65,4 +65,12 @@ The container runs `bin/setup --skip-server` when it is first created. That comm
 
 By default, `bin/devcontainer dev` starts [local development](local-development.md) without a GitHub App. It builds committed branches from repositories inside the devcontainer. Set `REPLICA_LOCAL_MODE=0` (or `false`) when starting `dev` to use GitHub-backed development instead. One-off `exec` and `shell` commands do not pick a mode automatically.
 
+To build trusted GitHub repositories in the Hub container, start with
+`REPLICA_LOCAL_MODE=0 REPLICA_BUILD_RUNNER=self_hosted bin/devcontainer dev`.
+Push notifications and Refresh fetch current branch heads. The worker checks out
+each commit in a temporary worktree and retains the validated package. Worktrees
+isolate source revisions. Package scripts and their dependencies run as the Hub
+OS user and can access files available to that user. Enable this mode only when
+you trust everyone who can push to any connected repository.
+
 GitHub-backed development uses a private GitHub App and test prototype repositories. GitHub Actions runs the same repository workflow used in production, while Hub polls GitHub without a public tunnel. Never install the development App on production repositories.

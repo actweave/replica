@@ -110,6 +110,7 @@ class RepositoriesController < SuperglueController
 
   # Keeps stored repository data available when the optional workflow check fails.
   def workflow_status(configuration)
+    return :present if Repository::SelfHostedSync.enabled?
     return :unavailable unless configuration&.installation_state == "active"
 
     @repository.workflow_installation.status(configuration:)

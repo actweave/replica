@@ -82,6 +82,7 @@ class Build < ApplicationRecord
   has_many :share_links, dependent: :restrict_with_exception
 
   has_object :package_import
+  has_object :self_hosted_package
   has_object :local_package
   has_object :commit_author
   has_object :start_page_import
@@ -107,6 +108,10 @@ class Build < ApplicationRecord
     limits_concurrency key: ->(build) { build }, duration: 5.minutes
     retry_on GithubClient::Error, LocalDevelopment::Error,
       wait: :polynomially_longer, attempts: 5
+  end
+  performs :build_self_hosted_package!, queue_as: :self_hosted_builds do
+    self.enqueue_after_transaction_commit = true
+    limits_concurrency key: ->(build) { build }, duration: 24.hours
   end
   performs :build_local_package!, queue_as: :builds do
     self.enqueue_after_transaction_commit = true
@@ -165,7 +170,12 @@ class Build < ApplicationRecord
     start_page_import.fetch!
   end
 
-  # Builds an exact local commit with the shared action's package contract.
+  # Builds a mirrored GitHub commit on the dedicated worker.
+  def build_self_hosted_package!
+    self_hosted_package.create!
+  end
+
+  # Builds an exact local commit with the shared action.
   def build_local_package!
     local_package.create!
   end
@@ -354,10 +364,11 @@ class Build < ApplicationRecord
   def publication_matches_state
     evidence = [ artifact_prefix, artifact_bytes ]
     valid = if state == "successful"
-      source_complete = if prototype&.repository&.local?
-        workflow_completed_at.nil? && github_artifact_id.nil? && local_package_completed_at.present?
+      source_complete = if local_package_completed_at.present?
+        permitted = prototype&.repository&.local? || Repository::SelfHostedSync.enabled? || state_in_database == "successful"
+        permitted && workflow_completed_at.nil? && github_artifact_id.nil?
       else
-        workflow_completed_at.present? && github_artifact_id.present? && local_package_completed_at.nil?
+        !prototype&.repository&.local? && workflow_completed_at.present? && github_artifact_id.present?
       end
       evidence.all?(&:present?) && source_complete && failure_summary.nil?
     else

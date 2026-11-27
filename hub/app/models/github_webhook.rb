@@ -17,7 +17,7 @@ class GithubWebhook
     def supported_event?(event:, action:)
       case event
       when "push" then true
-      when "workflow_run" then %w[requested in_progress completed].include?(action)
+      when "workflow_run" then !Repository::SelfHostedSync.enabled? && %w[requested in_progress completed].include?(action)
       when "installation" then INSTALLATION_ACTIONS.include?(action)
       when "installation_repositories" then %w[added removed].include?(action)
       else false
@@ -187,6 +187,11 @@ class GithubWebhook
 
     branch_name = branch_name_from(payload.fetch("ref"))
     return if branch_name.nil? || !repository.build_branch?(branch_name)
+
+    if Repository::SelfHostedSync.enabled?
+      with_delivery_configuration! { configuration.discover_builds_later!(repository) }
+      return
+    end
 
     if payload.fetch("deleted") == true
       repository.branch_presence.record_deletion!(branch_name:, configuration:, installation: installation_snapshot)

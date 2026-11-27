@@ -58,6 +58,7 @@ class Repository < ApplicationRecord
   has_object :authorization
   has_object :build_discoveries
   has_object :branch_presence
+  has_object :self_hosted_sync
   has_object :local_discovery
   has_object :prototype_candidates
   has_object :prototype_listing

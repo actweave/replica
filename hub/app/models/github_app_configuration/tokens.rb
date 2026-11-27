@@ -16,6 +16,16 @@ class GithubAppConfiguration::Tokens < ActiveRecord::AssociatedObject
     for_installation(record.installation_id)
   end
 
+  # Restricts Git fetch credentials to the single repository and contents read permission.
+  def repository_reader(repository_id)
+    response = record.github_client.installations.create_token(record.installation_id, token: app,
+      body: { repository_ids: [ repository_id ], permissions: { contents: "read" } })
+    token = response["token"]
+    raise GithubClient::InvalidResponse, "Missing repository read token" unless token.is_a?(String) && token.present?
+
+    token
+  end
+
   # Fetches a token for an owner-verified installation before its state is saved.
   def for_installation(installation_id)
     if !installation_id.is_a?(Integer) || !installation_id.positive?

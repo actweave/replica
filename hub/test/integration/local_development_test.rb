@@ -375,6 +375,32 @@ class LocalDevelopmentTest < ActionDispatch::IntegrationTest
     FileUtils.rm_rf(outside) if outside
   end
 
+  test "an email administrator discovers local checkouts and grants access to one repository" do
+    previous = ENV["REPLICA_AUTH_MODE"]
+    ENV["REPLICA_AUTH_MODE"] = "unified"
+    entry = AuthAllowlistEntry.create!(email: "admin@example.com", hub_admin: true)
+    create_repository("one")
+    create_repository("two")
+    in_local_mode do
+      challenge = EmailLoginChallenge.create!(email: entry.email, expires_at: 10.minutes.from_now)
+      code = format("%06d", SecureRandom.random_number(1_000_000))
+      challenge.update!(code_digest: challenge.digest(code))
+      post verify_email_login_path, params: { email: entry.email, code: }
+      get auth_allowlist_entries_path, as: :json
+      assert_response :success
+      one, two = Repository.active.order(:name_with_owner)
+      get repository_path(one.route_id)
+      assert_response :not_found
+      post repository_memberships_path(one.route_id), params: { recipient: entry.email, role: "read" }
+      get repository_path(one.route_id), as: :json
+      assert_equal [ "local/one" ], response.parsed_body.fetch("data").fetch("repositories").pluck("nameWithOwner")
+      get repository_path(two.route_id)
+      assert_response :not_found
+    end
+  ensure
+    ENV["REPLICA_AUTH_MODE"] = previous
+  end
+
   test "unified local repository access follows the grant and the live checkout identity" do
     previous = ENV["REPLICA_AUTH_MODE"]
     ENV["REPLICA_AUTH_MODE"] = "unified"

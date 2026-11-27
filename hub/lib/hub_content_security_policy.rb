@@ -1,13 +1,7 @@
 # Restricts trusted Hub pages without restricting arbitrary prototype assets.
 module HubContentSecurityPolicy
   # Only the sign-in page initiates a form redirect to an external OIDC provider.
-  def self.login_form_action(policy)
-    origins = OidcProvider.enabled.values.filter_map do |provider|
-      provider.client.authorization_endpoint.origin
-    rescue OidcProvider::InvalidResponse
-      # An unavailable issuer must not prevent signing in with another provider.
-      nil
-    end
+  def self.login_form_action(policy, origins)
     policy.form_action :self, Rails.configuration.x.github_url.delete_suffix("/"), *origins.uniq
   end
 

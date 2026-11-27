@@ -52,7 +52,7 @@ class OidcClient
 
   # Bind discovery to the exact issuer before caching endpoints.
   def metadata
-    @metadata ||= Rails.cache.fetch([ "oidc-discovery", @provider.issuer ], expires_in: 1.hour) do
+    @metadata ||= Rails.cache.fetch([ "oidc-discovery", @provider.issuer ], expires_in: 1.hour) do |_key, options|
       uri = URI("#{@provider.issuer.delete_suffix("/")}/.well-known/openid-configuration")
       document = request_json(uri)
       raise InvalidResponse unless document["issuer"] == @provider.issuer
@@ -61,13 +61,17 @@ class OidcClient
       raise InvalidResponse if document.key?("token_endpoint_auth_methods_supported") && !methods.is_a?(Array)
 
       document
+    rescue InvalidResponse
+      options.expires_in = 1.minute
+      nil
     end
+    @metadata || raise(InvalidResponse)
   end
 
-  # Reload once when key rotation introduces a previously unknown signing key.
+  # Bound trust in retired keys even when no new token triggers a refresh.
   def signing_keys(refresh)
     uri = OidcProvider.https_uri(metadata.fetch("jwks_uri"))
-    Rails.cache.fetch([ "oidc-jwks", @provider.issuer, uri.to_s ], expires_in: 1.hour, force: refresh) do
+    Rails.cache.fetch([ "oidc-jwks", @provider.issuer, uri.to_s ], expires_in: 10.minutes, force: refresh) do
       keys = request_json(uri)["keys"]
       raise InvalidResponse unless keys.is_a?(Array) && keys.all?(Hash)
 

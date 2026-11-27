@@ -943,6 +943,14 @@ class Learning::RunTest < ActiveSupport::TestCase
     assert_not Learning::Store.new(@repository).directory.join("learning.sqlite").exist?
   end
 
+  test "learning snapshots identify external reviewers by their Hub user ID" do
+    reviewer = users.create(identity_kind: "external", github_id: nil, login: "reviewer")
+    learning_comment(@repository, reviewer, "prototype/signup", "The email field has no label.")
+    snapshot = Learning::Collection.new(Learning::Store.new(@repository)).log
+    author = snapshot.fetch(:calls).sole.dig(:result, :threads).sole.fetch(:author)
+    assert_equal({ login: reviewer.login, name: reviewer.name, externalId: reviewer.id }, author)
+  end
+
   test "local development uses a local repository and the developer's own Copilot sign-in" do
     in_local_mode do |root|
       path = root.join("prototypes")

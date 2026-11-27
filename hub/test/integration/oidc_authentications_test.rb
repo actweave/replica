@@ -54,6 +54,71 @@ class OidcAuthenticationsTest < ActionDispatch::IntegrationTest
     assert_includes response.headers.fetch("Content-Security-Policy")[/form-action [^;]+/].split, URI(LOGIN).origin
   end
 
+  test "discovery failures hide only the unavailable login until discovery is retried" do
+    stub_request(:get, "#{ISSUER}/.well-known/openid-configuration").to_timeout.then.to_return(
+      body: { issuer: ISSUER, authorization_endpoint: LOGIN, token_endpoint: TOKEN, jwks_uri: JWKS }.to_json)
+    2.times do
+      get root_path, as: :json
+      assert_response :success
+      assert_empty response.parsed_body.fetch("data").fetch("oidcProviders")
+      assert_not_includes response.headers.fetch("Content-Security-Policy"), URI(LOGIN).origin
+    end
+    assert_requested @discovery, times: 1
+    travel 61.seconds do
+      get root_path, as: :json
+      assert_equal 1, response.parsed_body.fetch("data").fetch("oidcProviders").size
+      assert_includes response.headers.fetch("Content-Security-Policy"), URI(LOGIN).origin
+    end
+  end
+
+  test "a provider can rotate a signing key without changing its key ID" do
+    begin_login
+    finish_login
+    user = Session.sole.user
+    delete session_path
+    @signer = OpenSSL::PKey::RSA.generate(2048)
+    @jwk = JWT::JWK.new(@signer, kid: @jwk.kid)
+    begin_login
+    finish_login
+    assert_equal user, Session.sole.user
+    assert_requested @keys, times: 2
+  end
+
+  test "a retired signing key stops working after the JWKS cache expires" do
+    begin_login
+    finish_login
+    delete session_path
+    # The issuer now serves a new key while the ID token still uses the retired signer.
+    replacement = JWT::JWK.new(OpenSSL::PKey::RSA.generate(2048), kid: @jwk.kid)
+    stub_request(:get, JWKS).to_return(body: { keys: [ replacement.export ] }.to_json)
+    travel 11.minutes do
+      begin_login
+      assert_no_difference("Session.count") { finish_login }
+      assert_redirected_to root_path
+    end
+  end
+
+  test "verified email cannot claim an existing GitHub account" do
+    users.create(email: @entry.email)
+    begin_login
+    assert_no_difference([ "Session.count", "UserIdentity.count" ]) { finish_login }
+    assert_redirected_to root_path
+  end
+
+  test "verified email cannot claim the local developer account" do
+    original = LocalDevelopment.method(:enabled?)
+    LocalDevelopment.define_singleton_method(:enabled?) { true }
+    previous_mode = ENV["REPLICA_AUTH_MODE"]
+    ENV["REPLICA_AUTH_MODE"] = "unified"
+    User.local_developer!.update!(email: @entry.email)
+    begin_login
+    assert_no_difference([ "Session.count", "UserIdentity.count" ]) { finish_login }
+    assert_redirected_to root_path
+  ensure
+    LocalDevelopment.define_singleton_method(:enabled?, original)
+    ENV["REPLICA_AUTH_MODE"] = previous_mode
+  end
+
   test "verified code flow reuses the email account and handles a rotating EC key" do
     user = sign_in_by_email
     delete session_path

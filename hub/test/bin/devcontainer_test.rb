@@ -110,9 +110,12 @@ class DevcontainerTest < ActiveSupport::TestCase
     assert_nil option_value(calls.first, "--remote-env")
     arguments = exec_payload(calls.last)
     assert_equal "env", arguments.shift
-    environment = arguments.shift(2)
-    assert_includes environment, "REPLICA_LOCAL_MODE=0"
-    assert_includes environment, "REPLICA_BOOTSTRAP_SECRET=#{secret}"
+    assert_equal "REPLICA_LOCAL_MODE=0", arguments.shift
+    docker_exec = result[:calls].last
+    assert_includes docker_exec.each_cons(2).to_a, [ "--env", "RESEND_API_KEY" ]
+    assert_includes docker_exec.each_cons(2).to_a, [ "--env", "REPLICA_BOOTSTRAP_SECRET" ]
+    assert_not_includes docker_exec.join(" "), secret
+    assert_not_includes result[:output], secret
     assert_equal payload, arguments
     assert_nil result[:calls].find { |call| call.first == "build" }
   end

@@ -32,14 +32,18 @@ export function MentionInput({ value, onValueChange, onKeyDown, ref, ...props }:
   const [retry, setRetry] = useState(0)
   const [selected, setSelected] = useState(0)
   const [position, setPosition] = useState({ left: 0, top: 0, width: 0 })
-  const match = value.slice(0, caret).match(/(?:^|[\s(])@([a-zA-Z0-9-]*)$/)
+  const match = value.slice(0, caret).match(/(?:^|[\s(])@([\p{L}\p{M}\p{N}-]*)$/u)
   const query = match?.[1]?.toLowerCase()
   const open = source !== null && query !== undefined && !dismissed && !props.disabled
   const tooMany = getMentionLogins(value).length > 10
   const failed = result?.source === source && result?.failed
   const waiting = loading || result?.source !== source
   const suggestions = (result?.source === source ? result.candidates : [])
-    .filter((candidate) => candidate.login.toLowerCase().includes(query ?? ""))
+    .filter(
+      (candidate) =>
+        candidate.login.toLowerCase().includes(query ?? "") ||
+        candidate.name?.toLowerCase().includes(query ?? ""),
+    )
     .slice(0, 8)
   const activeIndex = Math.min(selected, Math.max(0, suggestions.length - 1))
   const showLimitError = useReviewError(tooMany && source?.copy.limit)
@@ -232,7 +236,7 @@ export function MentionInput({ value, onValueChange, onKeyDown, ref, ...props }:
                 <ul role="listbox" aria-label={source.copy.suggestions}>
                   {suggestions.map((candidate, index) => (
                     <li
-                      key={candidate.githubId}
+                      key={candidate.githubId ?? candidate.login}
                       id={`${listId}-${index}`}
                       role="option"
                       aria-selected={index === activeIndex}
@@ -243,7 +247,9 @@ export function MentionInput({ value, onValueChange, onKeyDown, ref, ...props }:
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => choose(candidate)}
                       >
-                        @{candidate.login}
+                        {candidate.name
+                          ? `${candidate.name} (@${candidate.login})`
+                          : `@${candidate.login}`}
                       </button>
                     </li>
                   ))}

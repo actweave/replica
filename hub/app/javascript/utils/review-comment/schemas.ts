@@ -32,6 +32,9 @@ const COMMON_COMMENT_FIELDS = {
   mentions: z.array(z.object({ login: z.string().min(1), githubId: IDENTIFIER_SCHEMA })).optional(),
   createdAt: DATE_TIME_SCHEMA,
   updatedAt: DATE_TIME_SCHEMA,
+  externalMentions: z
+    .array(z.object({ login: z.string().min(1), name: z.string().nullable() }))
+    .optional(),
   editedAt: NULLABLE_DATE_TIME_SCHEMA,
   deletedAt: NULLABLE_DATE_TIME_SCHEMA,
   author: AUTHOR_SCHEMA,

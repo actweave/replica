@@ -66,6 +66,13 @@ class User < ApplicationRecord
     dependent: :restrict_with_exception
 
   scope :non_local, -> { where.not(identity_kind: "local") }
+  scope :external_members_of, ->(repository) {
+    if LocalDevelopment.enabled? && !LocalDevelopment.unified_auth?
+      none
+    else
+      where(identity_kind: "external", id: repository.repository_memberships.select(:user_id))
+    end
+  }
   scope :hub_admins, -> { non_local.where(hub_admin: true) }
 
   normalizes :email, with: -> { _1.strip.downcase.presence }
@@ -75,6 +82,9 @@ class User < ApplicationRecord
   validates :github_id, numericality: { only_integer: true, greater_than: 0 },
     uniqueness: true, allow_nil: true
   validate :consistent_identity_kind
+  validate do
+    errors.add(:name, :invalid) if external? && will_save_change_to_name? && name && !DisplayName.valid?(name)
+  end
   validates :login, presence: true
   validate :identity_is_unchanged, on: :update
 

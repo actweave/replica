@@ -1,0 +1,8 @@
+zh-CN:
+  profile:
+    edit: "修改显示名"
+    name: "显示名"
+    save: "保存姓名"
+    cancel: "取消"
+    saved: "显示名已保存。"
+    invalid: "请输入 80 个字符以内的纯文本姓名，请勿填写邮箱地址。"

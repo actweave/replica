@@ -12,7 +12,7 @@
 #  updated_at         :datetime         not null
 #  actor_id           :integer          not null
 #  comment_mention_id :integer
-#  recipient_id       :integer          not null
+#  recipient_id       :integer
 #
 # Indexes
 #
@@ -30,9 +30,10 @@
 #
 # Check Constraints
 #
-#  notifications_kind            (kind IN ('comment_created', 'comment_mention', 'comment_reply', 'comment_reaction', 'thread_resolved', 'thread_reopened'))
-#  notifications_mention_source  ((kind = 'comment_mention' AND comment_mention_id IS NOT NULL) OR (kind <> 'comment_mention' AND comment_mention_id IS NULL))
-#  notifications_version         (lock_version >= 0)
+#  notifications_kind                  (kind IN ('comment_created', 'comment_mention', 'comment_reply', 'comment_reaction', 'thread_resolved', 'thread_reopened'))
+#  notifications_mention_source        ((kind = 'comment_mention' AND comment_mention_id IS NOT NULL) OR (kind <> 'comment_mention' AND comment_mention_id IS NULL))
+#  notifications_recipient_or_mention  (recipient_id IS NOT NULL OR kind = 'comment_mention')
+#  notifications_version               (lock_version >= 0)
 #
 # Stores recipient-specific inbox state independently of thread read receipts.
 class Notification < ApplicationRecord
@@ -45,7 +46,7 @@ class Notification < ApplicationRecord
     "thread_reopened" => "reopened"
   }.freeze
 
-  belongs_to :recipient, class_name: "GithubIdentity"
+  belongs_to :recipient, class_name: "GithubIdentity", optional: true
   belongs_to :actor, class_name: "User"
   belongs_to :comment_mention, optional: true
   has_many :notification_resources, dependent: :delete_all
@@ -57,9 +58,13 @@ class Notification < ApplicationRecord
   validates :comment_mention_id, uniqueness: true, allow_nil: true
   validates :source_key, presence: true, uniqueness: { scope: :recipient_id }
 
-  # Restricts inbox reads to the signed-in immutable GitHub identity.
+  # External mentions belong to the Hub account; GitHub recipients retain their immutable provider ID.
   scope :for_user, ->(user) {
-    where(recipient: GithubIdentity.where(github_id: user.github_id))
+    if user.external?
+      where(recipient_id: nil, comment_mention_id: CommentMention.where(external_user_id: user.id))
+    else
+      where(recipient: GithubIdentity.where(github_id: user.github_id))
+    end
   }
 
   # Checks fresh access before loading message text or exposing an unread indicator.

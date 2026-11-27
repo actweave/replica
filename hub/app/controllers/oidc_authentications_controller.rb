@@ -28,7 +28,8 @@ class OidcAuthenticationsController < ApplicationController
     claims = @provider.client.verified_claims(code: params[:code], verifier: flow.fetch("verifier"), redirect_uri:, nonce: flow.fetch("nonce"))
     destination = SessionRevocation.with_generation!(flow.fetch("generation")) do
       entry = AuthAllowlistEntry.find_by(email: claims.fetch("email"))
-      user = entry&.admit_verified_email!(provider: "oidc:#{@provider.slug}", issuer: @provider.issuer, subject: claims.fetch("sub"))
+      user = entry&.admit_verified_email!(provider: "oidc:#{@provider.slug}", issuer: @provider.issuer, subject: claims.fetch("sub"),
+        name: claims["name"], avatar_url: claims["picture"])
       next unless user
 
       path = establish_external_session(user, generation: flow.fetch("generation"))

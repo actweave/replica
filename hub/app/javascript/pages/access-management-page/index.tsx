@@ -42,6 +42,10 @@ export function AccessManagementPage({ data }: { data: AccessManagementData }) {
                 <input type="email" name="email" maxLength={254} required />
               </label>
               <label>
+                {copy.displayName}
+                <input name="display_name" />
+              </label>
+              <label>
                 <input type="checkbox" name="hub_admin" value="1" /> {copy.admin}
               </label>
             </>
@@ -56,6 +60,17 @@ export function AccessManagementPage({ data }: { data: AccessManagementData }) {
               <li key={row.id}>
                 <strong>{row.label}</strong>
                 {"hubAdmin" in row && row.hubAdmin && <Text>{copy.admin}</Text>}
+                {"displayName" in row && (
+                  <form method="post" action={row.path} aria-label={row.label}>
+                    {token}
+                    <input type="hidden" name="_method" value="patch" />
+                    <label>
+                      {copy.displayName}
+                      <input name="display_name" defaultValue={row.displayName ?? ""} />
+                    </label>
+                    <Button type="submit">{copy.saveName}</Button>
+                  </form>
+                )}
                 {"role" in row && (
                   <>
                     {row.pending && <Text>{copy.pending}</Text>}

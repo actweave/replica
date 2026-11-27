@@ -71,6 +71,46 @@ class OidcAuthenticationsTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "verified profile claims seed a blank name and refresh only safe avatars" do
+    @entry.update!(display_name: "Invited name")
+    @overrides = { name: "  林安  ", picture: "https://images.example.com/one" }
+    begin_login
+    finish_login
+    user = Session.sole.user
+    assert_equal "林安", user.name
+    assert_equal @overrides[:picture], user.avatar_url
+    handle = user.login
+    patch profile_path, params: { name: "  Chosen  ", login: "changed", email: "other@example.com" }
+    assert_equal "Chosen", user.reload.name
+    assert_equal handle, user.login
+    assert_equal @entry.email, user.email
+    assert_equal user, SecurityAuditEvent.where(action: "profile.update", outcome: "succeeded").sole.user
+
+    [ "http://images.example.com/a", "https://user:pass@images.example.com/a", "https://@images.example.com/a",
+      "https://", "not a URL", "https://images.example.com/#{"a" * 500}", 42 ].each do |picture|
+      delete session_path
+      @overrides = { name: "Provider name", picture: }
+      begin_login
+      finish_login
+      assert_equal user, Session.sole.user
+      assert_equal "Chosen", user.reload.name
+      assert_equal "https://images.example.com/one", user.avatar_url
+    end
+    delete session_path
+    @overrides[:picture] = "https://images.example.com/two"
+    begin_login
+    finish_login
+    assert_equal @overrides[:picture], user.reload.avatar_url
+  end
+
+  test "an invalid optional profile name falls back to the allowlist" do
+    @entry.update!(display_name: "Invited name")
+    @overrides = { name: "a" * 81 }
+    begin_login
+    finish_login
+    assert_equal "Invited name", Session.sole.user.name
+  end
+
   test "a provider can rotate a signing key without changing its key ID" do
     begin_login
     finish_login

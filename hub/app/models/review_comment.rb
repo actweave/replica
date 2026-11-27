@@ -201,7 +201,7 @@ class ReviewComment < ApplicationRecord
     # Reads one thread's visible replies oldest first without loading other conversations.
     def reply_page_for(root, viewer:, cursor:, page_size:, &fits)
       paginate \
-        root.replies.not_deleted.includes(:user, :reactions, comment_mentions: :github_identity),
+        root.replies.not_deleted.includes(:user, :reactions, comment_mentions: %i[github_identity external_user]),
         purpose: "thread/#{root.id}/viewer/#{viewer.id}",
         cursor:,
         page_size:,

@@ -67,6 +67,18 @@ describe("MentionInput()", () => {
     expect(submit).toHaveBeenCalledOnce()
   })
 
+  it("finds external reviewers by name and inserts their stable handle", async () => {
+    const load = vi
+      .fn()
+      .mockResolvedValue([{ login: "reviewer-123", name: "李安", avatarUrl: null }])
+    render(<Composer load={load} submit={vi.fn()} />)
+    const input = screen.getByRole("textbox")
+    fireEvent.change(input, { target: { value: "@李" } })
+    await screen.findByRole("option", { name: "李安 (@reviewer-123)" })
+    fireEvent.keyDown(input, { key: "Enter" })
+    expect(input).toHaveValue("@reviewer-123 ")
+  })
+
   it("reports lookup failure and supports retry without discarding text", async () => {
     const load = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValue([])
     render(<Composer load={load} submit={vi.fn()} />)

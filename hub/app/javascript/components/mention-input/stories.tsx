@@ -16,8 +16,9 @@ const meta = {
       () => ({
         load: () =>
           Promise.resolve([
-            { ...mona, githubId: 1002 },
-            { ...octocat, githubId: 1001 },
+            { login: "reviewer-123", name: "Jordan", avatarUrl: null },
+            { login: mona.login, avatarUrl: mona.avatarUrl, githubId: 1002 },
+            { login: octocat.login, avatarUrl: octocat.avatarUrl, githubId: 1001 },
           ]),
         copy: {
           suggestions: "Mention suggestions",

@@ -1,0 +1,8 @@
+en:
+  profile:
+    edit: "Edit display name"
+    name: "Display name"
+    save: "Save name"
+    cancel: "Cancel"
+    saved: "Display name saved."
+    invalid: "Enter a plain-text name of up to 80 characters without an email address."

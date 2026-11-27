@@ -21,6 +21,7 @@ en:
     empty: "No entries yet."
     repositories: "Manage repository members"
     saved: "Access settings saved."
+    invalid_display_name: "Enter a plain-text display name of up to 80 characters without an email address."
     invalid: "Check the address or role. The entry may already exist."
     unknown_recipient: "Enter an allowlisted email or an existing Hub user ID."
     last_admin: "Add another signed-in Hub administrator before removing the last one."

@@ -25,10 +25,23 @@ class OidcIdToken
     if claims.key?("azp") || Array(claims["aud"]).many?
       raise InvalidResponse unless claims["azp"] == provider.client_id
     end
-    claims
+    name = claims["name"].strip if claims["name"].is_a?(String)
+    claims.merge("name" => (name if DisplayName.valid?(name)), "picture" => avatar_url(claims["picture"]))
   rescue JWT::DecodeError, OpenSSL::OpenSSLError, ArgumentError, KeyError, TypeError
     raise InvalidResponse, cause: nil
   end
+
+  def self.avatar_url(value)
+    return unless value.is_a?(String) && value.length <= 500 && !value.match?(/[[:space:]\\]/)
+    uri = OidcProvider.https_uri(value)
+    return if uri.host.include?("%") || !uri.port.in?(1..65535)
+    return if value.match?(%r{\Ahttps://[^/?\#]*@}i)
+
+    value
+  rescue InvalidResponse, URI::Error
+    nil
+  end
+  private_class_method :avatar_url
 
   # Only a missing key or a signature mismatch merits one fetch of the latest keys.
   def self.verified_payload(token, provider, header, key_set)

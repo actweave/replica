@@ -49,3 +49,26 @@ export const LongIdentity: Story = {
     },
   },
 }
+
+export const EditDisplayName: Story = {
+  args: {
+    accountMenuLabel: "Account menu for @reviewer-123",
+    currentUser: {
+      name: "Jordan",
+      login: "reviewer-123",
+      avatarUrl: null,
+      profile: {
+        path: "/profile",
+        edit: "Edit display name",
+        name: "Display name",
+        save: "Save name",
+        cancel: "Cancel",
+      },
+    },
+  },
+  play: async ({ canvas, userEvent }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Account menu for @reviewer-123" }))
+    await userEvent.click(await canvas.findByRole("menuitem", { name: "Edit display name" }))
+    await canvas.findByRole("dialog", { name: "Edit display name" })
+  },
+}

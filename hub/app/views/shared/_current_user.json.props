@@ -1,0 +1,12 @@
+json.login Current.user.login
+json.name Current.user.name
+json.avatarUrl Current.user.avatar_url
+if Current.user.external?
+  json.profile do
+    json.path profile_path
+    json.edit t("profile.edit")
+    json.name t("profile.name")
+    json.save t("profile.save")
+    json.cancel t("profile.cancel")
+  end
+end

@@ -7,30 +7,36 @@
 #  login              :string           not null
 #  created_at         :datetime         not null
 #  updated_at         :datetime         not null
-#  github_identity_id :integer          not null
+#  external_user_id   :integer
+#  github_identity_id :integer
 #  review_comment_id  :integer          not null
 #
 # Indexes
 #
+#  idx_on_review_comment_id_external_user_id_ab0b735d65    (review_comment_id,external_user_id) UNIQUE
 #  idx_on_review_comment_id_github_identity_id_54cb03314e  (review_comment_id,github_identity_id) UNIQUE
+#  index_comment_mentions_on_external_user_id              (external_user_id)
 #  index_comment_mentions_on_github_identity_id            (github_identity_id)
 #  index_comment_mentions_on_review_comment_id             (review_comment_id)
 #
 # Foreign Keys
 #
+#  external_user_id    (external_user_id => users.id)
 #  github_identity_id  (github_identity_id => github_identities.id) ON DELETE => restrict
 #  review_comment_id   (review_comment_id => review_comments.id) ON DELETE => cascade
 #
 # Check Constraints
 #
-#  comment_mentions_login  (length(trim(login)) > 0)
+#  comment_mentions_login          (length(trim(login)) > 0)
+#  comment_mentions_one_recipient  ((external_user_id IS NULL) != (github_identity_id IS NULL))
 #
 # Records one durable recipient and the token used in a review message.
 class CommentMention < ApplicationRecord
   belongs_to :review_comment
-  belongs_to :github_identity
+  belongs_to :github_identity, optional: true
+  belongs_to :external_user, class_name: "User", optional: true
   has_one :notification, dependent: :destroy
 
   validates :login, presence: true
-  validates :github_identity_id, uniqueness: { scope: :review_comment_id }
+  validates :github_identity_id, :external_user_id, uniqueness: { scope: :review_comment_id }, allow_nil: true
 end

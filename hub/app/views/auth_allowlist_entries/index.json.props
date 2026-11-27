@@ -8,6 +8,7 @@ json.rows do
   json.array! @entries do |entry|
     json.id entry.id
     json.label entry.email
+    json.displayName entry.display_name
     json.hubAdmin entry.hub_admin?
     json.path auth_allowlist_entry_path(entry)
   end

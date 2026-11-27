@@ -82,8 +82,8 @@ export function CanvasDialog({
       }}
     >
       <header className="canvas-dialog-header">
-        <Heading as="h2" size="5" id={titleId}>
-          {title}
+        <Heading as="h2" size="5">
+          <span id={titleId}>{title}</span>
         </Heading>
         <HubIconButton
           variant="default"

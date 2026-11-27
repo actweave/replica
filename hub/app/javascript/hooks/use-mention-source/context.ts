@@ -1,7 +1,8 @@
 import { createContext } from "react"
 
 export interface MentionCandidate {
-  githubId: number
+  githubId?: number
+  name?: string | null
   login: string
   avatarUrl: string | null
 }

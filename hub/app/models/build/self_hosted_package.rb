@@ -13,12 +13,17 @@ class Build::SelfHostedPackage < Build::WorktreePackage
   def add_checkout(checkout)
     sync.with_lock do
       sync.ensure_commit!(build.commit_sha)
-      run!("git", "-C", sync.mirror.to_s, "worktree", "add", "--detach", checkout, build.commit_sha)
+      worktree!("add", "--detach", checkout, build.commit_sha)
     end
   end
 
   def remove_checkout(checkout)
-    sync.with_lock { run!("git", "-C", sync.mirror.to_s, "worktree", "remove", "--force", checkout) }
+    sync.with_lock { worktree!("remove", "--force", checkout) }
+  end
+
+  def worktree!(*arguments)
+    run!("git", "-C", sync.mirror.to_s, "-c", "core.hooksPath=#{File::NULL}", "worktree", *arguments,
+      environment: { "PATH" => ENV.fetch("PATH"), "GIT_CONFIG_GLOBAL" => File::NULL, "GIT_CONFIG_NOSYSTEM" => "1" })
   end
 
   def workspace = Rails.root.join(ENV["REPLICA_SELF_HOSTED_BUILD_ROOT"].presence || "storage/self_hosted_builds")

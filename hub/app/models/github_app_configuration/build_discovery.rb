@@ -17,6 +17,12 @@ class GithubAppConfiguration::BuildDiscovery < ActiveRecord::AssociatedObject
 
   # Records current branch commits and workflow states for one repository.
   def discover_repository!(repository, installation:)
+    if Repository::SelfHostedSync.enabled?
+      return if repository.local?
+
+      return repository.self_hosted_sync.synchronize!(configuration: record, installation:)
+    end
+
     observations = repository.branch_presence.observations
     current_branches = observations.values.select { |prototype| prototype.branch_deleted_at.nil? && prototype.reviewable? }
       .map(&:branch_name)

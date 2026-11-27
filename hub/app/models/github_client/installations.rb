@@ -22,8 +22,8 @@ class GithubClient::Installations
   end
 
   # Creates one access token for a GitHub App installation.
-  def create_token(id, token:)
-    transport.request(:post, "/app/installations/#{id.to_i}/access_tokens", token:)
+  def create_token(id, token:, body: nil)
+    transport.request(:post, "/app/installations/#{id.to_i}/access_tokens", token:, body:)
   end
 
   # Lists every repository available to a GitHub App installation.

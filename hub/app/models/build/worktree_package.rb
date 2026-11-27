@@ -14,7 +14,7 @@ class Build::WorktreePackage < ActiveRecord::AssociatedObject
     build.with_lock do
       return if build.state != "queued"
 
-      build.update!(state: "running", started_at: Time.current)
+      claim!
     end
     claimed = true
     FileUtils.mkdir_p(workspace)
@@ -90,6 +90,10 @@ class Build::WorktreePackage < ActiveRecord::AssociatedObject
   end
 
   private
+
+  def claim!
+    build.update!(state: "running", started_at: Time.current)
+  end
 
   def package_timeout = nil
 

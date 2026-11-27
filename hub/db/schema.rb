@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_26_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
   create_table "analytics_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -126,6 +126,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_26_010000) do
     t.datetime "workflow_completed_at"
     t.datetime "workflow_created_at"
     t.string "workflow_url", limit: 2048
+    t.boolean "self_hosted", default: false, null: false
     t.index "prototype_id, COALESCE(workflow_created_at, created_at) DESC, number DESC", name: "index_builds_on_prototype_and_chronology"
     t.index ["artifact_prefix"], name: "index_builds_on_artifact_prefix", unique: true, where: "artifact_prefix IS NOT NULL"
     t.index ["github_artifact_id"], name: "index_builds_on_github_artifact_id", unique: true, where: "github_artifact_id IS NOT NULL"

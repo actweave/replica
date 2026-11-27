@@ -420,6 +420,54 @@ class Build::PackageImportTest < ActiveSupport::TestCase
     assert_empty @artifact_store.list("builds/#{build.id}")
   end
 
+  test "runner cutover leaves a selected artifact with its importer" do
+    previous = ENV["REPLICA_BUILD_RUNNER"]
+    ENV["REPLICA_BUILD_RUNNER"] = "self_hosted"
+    build = completed_build
+    build.update!(github_artifact_id: 8001)
+    configuration = installed_configuration
+    client = fake_client
+    package = replica_package
+    client.actions.define_singleton_method(:download_artifact) do |_repository, _id, token:, destination:, maximum_bytes:|
+      Build.find(build.id).self_hosted_package.enqueue!
+      destination.write(package)
+    end
+    stub_github_client(configuration, client)
+    import_package(build, configuration)
+
+    assert_equal "successful", build.reload.state
+    assert_not build.self_hosted?
+    assert_equal 8001, build.github_artifact_id
+    assert @artifact_store.exist?("builds/#{build.id}/dist/index.html")
+  ensure
+    ENV["REPLICA_BUILD_RUNNER"] = previous
+  end
+
+  test "a stale download failure after cutover cannot remove the new worker's files" do
+    previous = ENV["REPLICA_BUILD_RUNNER"]
+    ENV["REPLICA_BUILD_RUNNER"] = "self_hosted"
+    build = completed_build
+    configuration = installed_configuration
+    client = fake_client
+    store = @artifact_store
+    name = "builds/#{build.id}/dist/index.html"
+    client.actions.define_singleton_method(:download_artifact) do |_repository, _id, token:, destination:, maximum_bytes:|
+      successor = Build.find(build.id)
+      successor.self_hosted_package.enqueue!
+      successor.update!(state: "running", self_hosted: true, started_at: Time.current)
+      store.write(name, source: StringIO.new("new package"))
+      raise GithubClient::NotFound, "expired artifact"
+    end
+    stub_github_client(configuration, client)
+    import_package(build, configuration)
+
+    assert_equal "running", build.reload.state
+    assert_nil build.workflow_completed_at
+    assert store.exist?(name)
+  ensure
+    ENV["REPLICA_BUILD_RUNNER"] = previous
+  end
+
   test "a stale earlier attempt cannot fail a recovered attempt during import" do
     build = builds.create
     attempt = ->(number) do

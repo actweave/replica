@@ -15,12 +15,15 @@ class Repository::SelfHostedSync < ActiveRecord::AssociatedObject
   end
 
   def synchronize!(configuration:, installation:)
-    with_lock do
+    # Keep scans ordered while allowing worktree cleanup during remote ancestry checks.
+    with_lock("#{mirror}.scan.lock") do
       return unless repository.reload.installation_state == "active" && !repository.local?
 
       observations = repository.branch_presence.observations
-      fetch!(configuration)
-      heads = git!("for-each-ref", "--format=%(refname:strip=2)%00%(objectname)%00%(authorname)", "refs/heads")
+      heads = with_lock do
+        fetch!(configuration)
+        git!("for-each-ref", "--format=%(refname:strip=2)%00%(objectname)%00%(authorname)", "refs/heads")
+      end
       heads.each_line do |row|
         branch_name, commit_sha, author = row.scrub.chomp.split("\0", 3)
         next unless repository.build_branch?(branch_name)
@@ -31,8 +34,8 @@ class Repository::SelfHostedSync < ActiveRecord::AssociatedObject
 
         build.with_lock do
           build.update!(commit_author_name: author.strip.first(255)) if author.present? && build.commit_author_name.nil?
-          build.build_self_hosted_package_later! if build.state == "queued"
         end
+        build.self_hosted_package.enqueue!
       end
       configuration.with_installation!(snapshot: installation) do
         observations.each { |name, observed| repository.branch_presence.record_missing!(branch_name: name, observed:) }
@@ -40,9 +43,9 @@ class Repository::SelfHostedSync < ActiveRecord::AssociatedObject
     end
   end
 
-  def with_lock
+  def with_lock(path = "#{mirror}.lock")
     FileUtils.mkdir_p(mirror.dirname)
-    File.open("#{mirror}.lock", "w", 0o600) do |file|
+    File.open(path, "w", 0o600) do |file|
       file.flock(File::LOCK_EX)
       yield
     end

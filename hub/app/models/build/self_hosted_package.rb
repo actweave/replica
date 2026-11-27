@@ -2,10 +2,31 @@
 class Build::SelfHostedPackage < Build::WorktreePackage
   class StageFailure < StandardError; end
 
+  # An Actions importer owns the prefix once it has selected an artifact under the row lock.
+  def enqueue!
+    build.with_lock do
+      return unless eligible?(build.prototype.repository) && build.state.in?(%w[queued running])
+
+      if build.github_artifact_id.present?
+        build.import_package_later!
+        return
+      end
+
+      if build.state == "running" && build.github_workflow_run_id.present? && !build.self_hosted?
+        build.update!(state: "queued", started_at: nil, workflow_completed_at: nil)
+      end
+      build.build_self_hosted_package_later! if build.state == "queued"
+    end
+  end
+
   private
 
   def eligible?(repository)
     Repository::SelfHostedSync.enabled? && !repository.local? && repository.installation_state == "active"
+  end
+
+  def claim!
+    build.update!(state: "running", started_at: Time.current, self_hosted: true)
   end
 
   def sync = build.prototype.repository.self_hosted_sync
@@ -18,7 +39,15 @@ class Build::SelfHostedPackage < Build::WorktreePackage
   end
 
   def remove_checkout(checkout)
-    sync.with_lock { worktree!("remove", "--force", checkout) }
+    sync.with_lock do
+      begin
+        worktree!("remove", "--force", checkout)
+      rescue StageFailure
+        FileUtils.remove_entry(checkout) if File.exist?(checkout)
+        worktree!("prune", "--expire", "now")
+        raise
+      end
+    end
   end
 
   def worktree!(*arguments)

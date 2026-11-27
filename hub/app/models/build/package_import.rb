@@ -69,6 +69,7 @@ class Build::PackageImport < ActiveRecord::AssociatedObject
   # Downloads the selected package and replaces any incomplete retained prefix.
   def import_package(client, token, repository, artifact_id, artifact_store:, maximum_bytes:)
     prefix = "builds/#{build.id}"
+    writing_prefix = false
     Tempfile.create([ "replica-build-", ".zip" ], binmode: true) do |package|
       client.actions.download_artifact \
         repository,
@@ -81,12 +82,13 @@ class Build::PackageImport < ActiveRecord::AssociatedObject
       return if !importable?
       return if build.github_artifact_id.nil? && !record_artifact!(artifact_id)
 
+      writing_prefix = true
       artifact_store.delete_prefix(prefix)
       bytes = Build::PackageExtraction.new(artifact_store:, maximum_bytes:).extract!(package, prefix:)
       publish!(prefix:, bytes:)
     end
   rescue StandardError
-    artifact_store.delete_prefix(prefix) if build.reload.state != "successful"
+    artifact_store.delete_prefix(prefix) if writing_prefix && build.reload.state != "successful"
     raise
   end
 

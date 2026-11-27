@@ -28,5 +28,11 @@ class Build::LocalPackage < Build::WorktreePackage
     { "npm_config_offline" => "true", "npm_config_cache" => ENV.fetch("npm_config_cache", File.join(ENV.fetch("HOME"), ".npm")) }
   end
 
+  def run!(command, ...)
+    super
+  rescue Timeout::Error
+    raise LocalDevelopment::Error, "#{command} exceeded the 15-minute build limit"
+  end
+
   def failure_message(error) = "Local build failed: #{error.message.to_s.first(950)}"
 end

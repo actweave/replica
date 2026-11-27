@@ -73,4 +73,9 @@ isolate source revisions. Package scripts and their dependencies run as the Hub
 OS user and can access files available to that user. Enable this mode only when
 you trust everyone who can push to any connected repository.
 
+When switching an existing Hub to this runner, apply the database migrations and
+restart Hub and its workers. The next sync queues unfinished Actions builds for
+current branch heads. An importer that already selected a GitHub artifact finishes
+that import. Published builds keep their existing previews.
+
 GitHub-backed development uses a private GitHub App and test prototype repositories. GitHub Actions runs the same repository workflow used in production, while Hub polls GitHub without a public tunnel. Never install the development App on production repositories.

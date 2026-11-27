@@ -18,6 +18,7 @@
 #  local_package_completed_at  :datetime
 #  number                      :integer          not null
 #  previous_commit_sha         :string
+#  self_hosted                 :boolean          default(FALSE), not null
 #  start_page_checked_at       :datetime
 #  started_at                  :datetime
 #  state                       :string           default("queued"), not null
@@ -274,7 +275,12 @@ class Build < ApplicationRecord
 
   # Keeps workflow completion and its selected GitHub artifact write-once.
   def import_identity_is_unchanged
+    # A runner switch may release a completed workflow before its importer claims a GitHub artifact.
+    releasing_workflow = Repository::SelfHostedSync.enabled? && will_save_change_to_state?(from: "running", to: "queued") &&
+      workflow_completed_at.nil? && attribute_in_database(:github_artifact_id).nil?
     %i[workflow_completed_at github_artifact_id].each do |attribute|
+      next if attribute == :workflow_completed_at && releasing_workflow
+
       changed = public_send("will_save_change_to_#{attribute}?")
       errors.add(attribute, "cannot change") if changed && attribute_in_database(attribute).present?
     end
@@ -365,7 +371,7 @@ class Build < ApplicationRecord
     evidence = [ artifact_prefix, artifact_bytes ]
     valid = if state == "successful"
       source_complete = if local_package_completed_at.present?
-        permitted = prototype&.repository&.local? || Repository::SelfHostedSync.enabled? || state_in_database == "successful"
+        permitted = prototype&.repository&.local? || self_hosted? || state_in_database == "successful"
         permitted && workflow_completed_at.nil? && github_artifact_id.nil?
       else
         !prototype&.repository&.local? && workflow_completed_at.present? && github_artifact_id.present?

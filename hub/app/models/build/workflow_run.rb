@@ -24,6 +24,8 @@ class Build::WorkflowRun < ActiveRecord::AssociatedObject
   # Records the first workflow run, or a newer attempt of it, and changes the Build from GitHub's current result.
   def record!(run_id:, run_attempt:, workflow_url:, workflow_created_at:, stage:, conclusion:)
     build.with_lock do
+      return build if build.self_hosted?
+
       if same_run?(run_id, run_attempt) && build.workflow_created_at.nil?
         build.update!(workflow_created_at:)
       end
@@ -50,7 +52,7 @@ class Build::WorkflowRun < ActiveRecord::AssociatedObject
   # Fails a Build when GitHub no longer provides its saved workflow run.
   def fail_missing!
     build.with_lock do
-      return false if !%w[queued running].include?(build.state) || build.workflow_completed_at.present?
+      return false if build.self_hosted? || !%w[queued running].include?(build.state) || build.workflow_completed_at.present?
 
       now = Time.current
       build.update! \

@@ -12,7 +12,7 @@ module CanvasCommentResponses
     unless filter == "only"
       comments.concat \
         ReviewComment.where(prototype: prototypes)
-          .includes(:prototype, :build, :user, :resolved_by, :reactions, comment_mentions: :github_identity).to_a
+          .includes(:prototype, :build, :user, :resolved_by, :reactions, comment_mentions: %i[github_identity external_user]).to_a
     end
     unless filter == "exclude"
       comments.concat \

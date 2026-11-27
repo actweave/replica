@@ -6,7 +6,10 @@ import "./styles.css"
 
 export function MentionText({ comment }: { comment: ReviewComment }) {
   const body = comment.body ?? ""
-  const mentions = new Set(comment.mentions?.map((mention) => mention.login.toLowerCase()) ?? [])
+  const mentions = new Map(
+    comment.externalMentions?.map((mention) => [mention.login.toLowerCase(), mention.name]),
+  )
+  for (const mention of comment.mentions ?? []) mentions.set(mention.login.toLowerCase(), null)
   const tokens = body.matchAll(
     /(?<![A-Za-z0-9_@/])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?)(?![A-Za-z0-9_-])/g,
   )
@@ -18,7 +21,7 @@ export function MentionText({ comment }: { comment: ReviewComment }) {
     parts.push(body.slice(start, token.index))
     parts.push(
       <span className="mention-text" key={token.index}>
-        {token[0]}
+        @{mentions.get(token[1].toLowerCase()) || token[1]}
       </span>,
     )
     start = token.index + token[0].length

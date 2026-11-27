@@ -5,6 +5,7 @@ export interface WorkspaceAccountData {
   expandNavigationLabel: string
   feedbackLabel: string
   currentUser: {
+    profile?: { path: string; edit: string; name: string; save: string; cancel: string }
     avatarUrl: string | null
     login: string
     name: string | null

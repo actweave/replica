@@ -43,7 +43,12 @@ module ReviewCommentPages
       id: comment.id,
       kind: comment.root_comment? ? "root" : "reply",
       body: comment.body,
-      mentions: comment.comment_mentions.map { { login: _1.login, githubId: _1.github_identity.github_id } },
+      mentions: comment.comment_mentions.filter_map do |mention|
+        { login: mention.login, githubId: mention.github_identity.github_id } if mention.github_identity_id
+      end,
+      externalMentions: comment.comment_mentions.filter_map do |mention|
+        { login: mention.login, name: mention.external_user.name } if mention.external_user_id
+      end,
       createdAt: comment.created_at.iso8601(6),
       updatedAt: comment.updated_at.iso8601(6),
       editedAt: comment.edited_at&.iso8601(6),

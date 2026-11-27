@@ -327,6 +327,39 @@ class NotificationsTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "external mention suggestions are restricted to verified members of this repository" do
+    reader = AuthAllowlistEntry.create!(email: "reader@example.com", display_name: "Casey").admit_verified_email!
+    other = AuthAllowlistEntry.create!(email: "other@example.com").admit_verified_email!
+    RepositoryMembership.create!(repository: @repository, user: reader, role: "read")
+    stub_request(:get, "#{GITHUB_API_URL}/repos/github/prototype/collaborators")
+      .with(query: { "affiliation" => "all", "per_page" => "100", "page" => "1" }).to_return(body: "[]")
+    get repository_prototype_mention_candidates_path(@repository.route_id, @build.prototype)
+    assert_equal [ { "login" => reader.login, "name" => "Casey", "avatarUrl" => nil } ], response.parsed_body.fetch("externalCandidates")
+    assert_not_includes response.body, reader.email
+    assert_not_includes response.body, other.login
+    @comment.thread.edit_body!("Hello @#{reader.login}", actor: @actor)
+    notification = Notification.visible_to(reader).sole
+    assert_empty Notification.visible_to(other)
+    reader.update!(name: "Casey Li")
+    get repository_prototype_review_comments_path(@repository.route_id, @build.prototype)
+    payload = response.parsed_body.fetch("comments").sole
+    assert_equal [ { "login" => reader.login, "name" => "Casey Li" } ], payload.fetch("externalMentions")
+    assert_equal "Hello @#{reader.login}", payload.fetch("body")
+    assert_not_includes response.body, reader.email
+    @comment.thread.edit_body!("Again @#{reader.login}", actor: @actor)
+    assert_equal notification.id, Notification.visible_to(reader).sole.id
+    reader.repository_memberships.destroy_all
+    assert_empty Notification.visible_to(reader)
+    @comment.thread.edit_body!("Withdraw @#{reader.login}", actor: @actor)
+    assert_empty @comment.comment_mentions
+  end
+
+  test "GitHub accounts cannot edit their name through the external profile endpoint" do
+    patch profile_path, params: { name: "Changed" }
+    assert_response :forbidden
+    assert_not_equal "Changed", @recipient.reload.name
+  end
+
   test "canvas suggestions require a repository-scoped grant rather than browser cookies" do
     path = canvas_api_mention_candidates_path(@repository.route_id, @build.prototype)
     get path

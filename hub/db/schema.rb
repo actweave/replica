@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_27_020000) do
   create_table "analytics_deliveries", force: :cascade do |t|
     t.integer "attempts", default: 0, null: false
     t.datetime "created_at", null: false
@@ -79,6 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
     t.string "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "display_name", limit: 80
     t.index ["added_by_id"], name: "index_auth_allowlist_entries_on_added_by_id"
     t.index ["email"], name: "index_auth_allowlist_entries_on_email", unique: true
   end
@@ -202,13 +203,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
 
   create_table "comment_mentions", force: :cascade do |t|
     t.integer "review_comment_id", null: false
-    t.integer "github_identity_id", null: false
+    t.integer "github_identity_id"
     t.string "login", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "external_user_id"
+    t.index ["external_user_id"], name: "index_comment_mentions_on_external_user_id"
     t.index ["github_identity_id"], name: "index_comment_mentions_on_github_identity_id"
+    t.index ["review_comment_id", "external_user_id"], name: "idx_on_review_comment_id_external_user_id_ab0b735d65", unique: true
     t.index ["review_comment_id", "github_identity_id"], name: "idx_on_review_comment_id_github_identity_id_54cb03314e", unique: true
     t.index ["review_comment_id"], name: "index_comment_mentions_on_review_comment_id"
+    t.check_constraint "(external_user_id IS NULL) != (github_identity_id IS NULL)", name: "comment_mentions_one_recipient"
     t.check_constraint "length(trim(login)) > 0", name: "comment_mentions_login"
   end
 
@@ -451,7 +456,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
   end
 
   create_table "notifications", force: :cascade do |t|
-    t.integer "recipient_id", null: false
+    t.integer "recipient_id"
     t.integer "actor_id", null: false
     t.integer "comment_mention_id"
     t.string "kind", null: false
@@ -468,6 +473,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
     t.check_constraint "(kind = 'comment_mention' AND comment_mention_id IS NOT NULL) OR (kind <> 'comment_mention' AND comment_mention_id IS NULL)", name: "notifications_mention_source"
     t.check_constraint "kind IN ('comment_created', 'comment_mention', 'comment_reply', 'comment_reaction', 'thread_resolved', 'thread_reopened')", name: "notifications_kind"
     t.check_constraint "lock_version >= 0", name: "notifications_version"
+    t.check_constraint "recipient_id IS NOT NULL OR kind = 'comment_mention'", name: "notifications_recipient_or_mention"
   end
 
   create_table "preview_grants", force: :cascade do |t|
@@ -849,6 +855,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_27_000000) do
   add_foreign_key "canvas_pairings", "users", on_delete: :cascade
   add_foreign_key "comment_mentions", "github_identities", on_delete: :restrict
   add_foreign_key "comment_mentions", "review_comments", on_delete: :cascade
+  add_foreign_key "comment_mentions", "users", column: "external_user_id"
   add_foreign_key "copilot_connections", "users", on_delete: :cascade
   add_foreign_key "fresh_authorizations", "repositories", on_delete: :nullify
   add_foreign_key "fresh_authorizations", "users", on_delete: :cascade

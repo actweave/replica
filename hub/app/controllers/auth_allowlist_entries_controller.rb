@@ -16,12 +16,24 @@ class AuthAllowlistEntriesController < SuperglueController
     email = params.expect(:email).to_s.strip
     return reject_change(:invalid) if email.bytesize > 254
 
-    entry = AuthAllowlistEntry.create!(email:, hub_admin: params[:hub_admin] == "1",
-      added_by: Current.user)
+    name = params[:display_name]
+    return reject_change(:invalid) unless name.nil? || name.is_a?(String)
+
+    entry = AuthAllowlistEntry.create!(email:, display_name: name, hub_admin: params[:hub_admin] == "1", added_by: Current.user)
     user = User.find_by(identity_kind: "external", email: entry.email)
     if entry.hub_admin? && user && !user.hub_admin?
       user.change_hub_admin!(actor: Current.user, browser_session: Current.session, operation: "designate")
     end
+    changed(allowlist_entry_id: entry.id)
+  end
+
+  # @route PATCH /auth_allowlist_entries/:id (auth_allowlist_entry)
+  # @route PUT /auth_allowlist_entries/:id (auth_allowlist_entry)
+  def update
+    entry = AuthAllowlistEntry.find(params[:id])
+    return reject_change(:invalid) unless params[:display_name].is_a?(String)
+
+    entry.update!(display_name: params[:display_name])
     changed(allowlist_entry_id: entry.id)
   end
 

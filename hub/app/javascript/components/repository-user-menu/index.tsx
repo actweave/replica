@@ -1,8 +1,10 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 
 import { DeviceDesktopIcon, MoonIcon, SignOutIcon, SunIcon } from "@primer/octicons-react"
-import { ActionMenu } from "@primer/react-brand/esm"
+import { ActionMenu, Button } from "@primer/react-brand/esm"
 
+import type { WorkspaceAccountData } from "@components/workspace-navigation/types"
+import { CanvasDialog } from "@components/prototype-canvas-dialog"
 import { HubUserAvatar } from "@components/hub-user-avatar"
 import { useOptionalHubTheme } from "@hooks/use-hub-theme"
 import type { HubColorMode } from "@hooks/use-hub-theme"
@@ -72,17 +74,15 @@ export function RepositoryUserMenu({
   accountMenuLabel: string
   authenticityToken: string
   collapsed?: boolean
-  currentUser: {
-    avatarUrl: string | null
-    login: string
-    name: string | null
-  }
+  currentUser: WorkspaceAccountData["currentUser"]
   darkThemeLabel?: string
   lightThemeLabel?: string
   signOutLabel: string
   signOutPath: string
   systemThemeLabel?: string
 }) {
+  const [editing, setEditing] = useState(false)
+  const { profile } = currentUser
   const signOutForm = useRef<HTMLFormElement>(null)
   const theme = useOptionalHubTheme()
   const themeOptions =
@@ -121,6 +121,11 @@ export function RepositoryUserMenu({
                 onChange={theme.setColorMode}
               />
             ) : null}
+            {profile && (
+              <ActionMenu.Item value="profile" onClick={() => setEditing(true)}>
+                {profile.edit}
+              </ActionMenu.Item>
+            )}
             <ActionMenu.Item
               className="repository-user-menu__sign-out"
               value="sign-out"
@@ -139,6 +144,25 @@ export function RepositoryUserMenu({
         </ActionMenu>
       </div>
 
+      {editing && profile && (
+        <CanvasDialog
+          title={profile.edit}
+          closeLabel={profile.cancel}
+          onClose={() => setEditing(false)}
+        >
+          <form action={profile.path} method="post" className="repository-user-menu__profile">
+            <input type="hidden" name="_method" value="patch" />
+            <input type="hidden" name="authenticity_token" value={authenticityToken} />
+            <label>
+              {profile.name}
+              <input name="name" defaultValue={currentUser.name ?? ""} required />
+            </label>
+            <Button type="submit" variant="primary">
+              {profile.save}
+            </Button>
+          </form>
+        </CanvasDialog>
+      )}
       <form ref={signOutForm} action={signOutPath} method="post" hidden>
         <input type="hidden" name="_method" value="delete" />
         <input type="hidden" name="authenticity_token" value={authenticityToken} />

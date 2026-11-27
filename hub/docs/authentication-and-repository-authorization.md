@@ -24,6 +24,12 @@ For an existing Hub user, a successful uncached response with the creator's exac
 
 Every analytics-destination mutation also requires GitHub identity verification within the last five minutes on the same browser Session or canvas grant. This additional check never replaces repository permission. GitHub may reuse its browser session; it does not guarantee a password or MFA prompt. See [Fresh GitHub authorization](fresh-authorization.md) for the one-use challenge and explicit retry contract.
 
+## External reviewer profiles
+
+In a Hub with email or OIDC sign-in, administrators can set a display name in **Hub administrators → Email allowlist**. On verified sign-in, a reviewer with a blank name receives the provider's name, or the allowlist name when the provider supplies none. A verified OIDC profile can also update the reviewer's HTTPS avatar. Configure the provider's profile scope if it requires one to return these claims.
+
+External reviewers can choose **Edit display name** from the workspace account menu. Names are plain text up to 80 characters. Comments and mention suggestions show the current name. Selecting a suggestion inserts the stable reviewer handle, so renaming preserves existing mentions. The suggestions include only external reviewers with access to that repository.
+
 ## App ownership and repository visibility
 
 GitHub controls who can sign in through Hub's App. Hub checks each person's repository permissions to decide which reviews they can read.

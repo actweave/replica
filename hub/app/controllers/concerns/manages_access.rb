@@ -25,7 +25,11 @@ module ManagesAccess
   rescue ActiveRecord::RecordInvalid => error
     raise if error.record.is_a?(SecurityAuditEvent)
 
-    reject_change(:invalid)
+    if error.record.is_a?(AuthAllowlistEntry) && error.record.errors.include?(:display_name)
+      reject_change(:invalid_display_name)
+    else
+      reject_change(:invalid)
+    end
   rescue ActiveRecord::RecordNotUnique
     reject_change(:invalid)
   end

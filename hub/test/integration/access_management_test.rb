@@ -67,6 +67,50 @@ class AccessManagementTest < ActionDispatch::IntegrationTest
     assert_equal User.find_by!(email: @admin.email), event.user
   end
 
+  test "allowlist names seed verified accounts and profile edits keep the public identity stable" do
+    post auth_allowlist_entries_path, params: { email: "reader@example.com", display_name: "  Initial  " }
+    entry = AuthAllowlistEntry.find_by!(email: "reader@example.com")
+    assert_equal "Initial", entry.display_name
+    patch auth_allowlist_entry_path(entry), params: { display_name: "  Jordan  ", hub_admin: "1" }
+    assert_equal "Jordan", entry.reload.display_name
+    assert_not entry.hub_admin?
+    patch auth_allowlist_entry_path(entry), params: { display_name: "x" * 81 }
+    assert_equal "Jordan", entry.reload.display_name
+
+    post @path, params: { recipient: entry.email, role: "read" }
+    reader = open_session
+    sign_in(reader, entry)
+    user = User.find_by!(email: entry.email)
+    assert_equal "Jordan", user.name
+    assert_match(/\Areviewer-[a-f0-9]+\z/, user.login)
+    reader.patch profile_path, params: { name: "李" * 80 }
+    reader.get repository_path(@a.route_id), as: :json
+    identity = reader.response.parsed_body.fetch("data").fetch("currentUser")
+    assert_equal "李" * 80, identity.fetch("name")
+    assert_equal profile_path, identity.fetch("profile").fetch("path")
+    assert_not_includes reader.response.body, entry.email
+    [ "a" * 81, "<b>name</b>", entry.email, " " ].each do |name|
+      reader.patch profile_path, params: { name: }
+      assert_equal "李" * 80, user.reload.name
+      assert_equal "denied", SecurityAuditEvent.where(action: "profile.update").last.outcome
+    end
+    reader.patch auth_allowlist_entry_path(entry), params: { display_name: "Other" }
+    assert_equal 403, reader.response.status
+    reader.delete session_path
+    sign_in(reader, entry)
+    assert_equal "李" * 80, user.reload.name
+  end
+
+  test "updating the profile requires the browser authenticity token" do
+    previous = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+    patch profile_path, params: { name: "Changed" }
+    assert_response :unprocessable_entity
+    assert_nil User.find_by!(email: @admin.email).name
+  ensure
+    ActionController::Base.allow_forgery_protection = previous
+  end
+
   test "a returning email administrator without grants lands in Hub administration" do
     delete session_path
     sign_in(self, @admin)

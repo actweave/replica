@@ -1,6 +1,8 @@
 import type { HubAdministrationPageData } from "@features/hub-administration-page/types"
 
 type Copy = Record<
+  | "displayName"
+  | "saveName"
   | "email"
   | "recipient"
   | "admin"
@@ -31,7 +33,7 @@ export type AccessManagementData = HubAdministrationPageData & {
 } & (
     | {
         kind: "allowlist"
-        rows: (Row & { hubAdmin: boolean })[]
+        rows: (Row & { hubAdmin: boolean; displayName: string | null })[]
         repositories: { label: string; path: string }[]
       }
     | { kind: "members"; rows: (Row & { role: Role; pending: boolean })[] }

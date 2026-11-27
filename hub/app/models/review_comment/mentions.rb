@@ -9,14 +9,20 @@ class ReviewComment::Mentions < ActiveRecord::AssociatedObject
     if logins.length > MAXIMUM_RECIPIENTS
       raise ReviewComment::TooManyMentions, "Each message can mention at most #{MAXIMUM_RECIPIENTS} distinct people"
     end
-    return [] if logins.empty? || repository.local?
+    return [] if logins.empty?
+
+    github_tokens = existing.select(&:github_identity_id).map(&:login)
+    members = User.external_members_of(repository).where(login: logins - github_tokens).index_by(&:login)
+    external = members.values.map { |user| { external_user_id: user.id, token_login: user.login } }
+    github_logins = logins - members.keys - existing.select(&:external_user_id).map(&:login)
+    return external if github_logins.empty? || repository.local?
 
     configuration = GithubAppConfiguration.current
     raise GithubClient::Error, "GitHub is unavailable" if configuration.nil?
 
     client = configuration.github_client.repositories
     token = configuration.tokens.installation
-    logins.filter_map do |login|
+    external + github_logins.filter_map do |login|
       previous = existing.find { _1.login.downcase == login }
       profile = if previous
         client.mention_profile(previous.github_identity.login, github_id: previous.github_identity.github_id, token:)
@@ -35,10 +41,13 @@ class ReviewComment::Mentions < ActiveRecord::AssociatedObject
 
   # Diffs recipients under the message lock, retaining existing notifications on ordinary edits.
   def sync!(profiles)
+    external, profiles = profiles.partition { _1.key?(:external_user_id) }
+    sync_external!(external) if external.any? || record.comment_mentions.where.not(external_user_id: nil).exists?
+
     profiles = profiles.reject { _1.fetch(:github_id) == record.user.github_id }.uniq { _1.fetch(:github_id) }
     identities = profiles.map { GithubIdentity.record!(_1) }
     retained_ids = identities.map(&:id)
-    record.comment_mentions.where.not(github_identity_id: retained_ids).destroy_all
+    record.comment_mentions.where.not(github_identity_id: nil).where.not(github_identity_id: retained_ids).destroy_all
     profiles.zip(identities).each do |profile, identity|
       mention = record.comment_mentions.find_or_initialize_by(github_identity: identity)
       added = mention.new_record?
@@ -46,5 +55,17 @@ class ReviewComment::Mentions < ActiveRecord::AssociatedObject
       Notification.record_mention!(mention) if added
     end
     record.comment_mentions.reset
+  end
+
+  private
+
+  def sync_external!(external)
+    retained_external = User.external_members_of(record.prototype.repository)
+      .where(id: external.pluck(:external_user_id)).where.not(id: record.user_id)
+    record.comment_mentions.where.not(external_user_id: nil).where.not(external_user_id: retained_external.select(:id)).destroy_all
+    retained_external.each do |user|
+      mention = record.comment_mentions.find_or_create_by!(external_user: user) { _1.login = user.login }
+      Notification.record_mention!(mention) if mention.previously_new_record?
+    end
   end
 end

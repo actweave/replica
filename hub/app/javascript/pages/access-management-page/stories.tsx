@@ -4,6 +4,8 @@ import { AccessManagementPage } from "."
 import type { AccessManagementData } from "./types"
 
 const copy = {
+  displayName: "Display name",
+  saveName: "Save name",
   email: "Email address",
   recipient: "Allowlisted email or Hub user ID",
   admin: "Hub administrator",
@@ -31,7 +33,15 @@ const allowlist: AccessManagementData = {
   heading: "Email allowlist",
   description: "Manage who can sign in by email and who can administer this Hub.",
   submitPath: "/auth_allowlist_entries",
-  rows: [{ id: 1, label: "owner@example.com", hubAdmin: true, path: "/auth_allowlist_entries/1" }],
+  rows: [
+    {
+      id: 1,
+      label: "owner@example.com",
+      displayName: "Morgan",
+      hubAdmin: true,
+      path: "/auth_allowlist_entries/1",
+    },
+  ],
   repositories: [{ label: "example/design", path: "/repositories/2001/memberships" }],
 }
 

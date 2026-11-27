@@ -21,6 +21,7 @@ zh-CN:
     empty: "暂无条目。"
     repositories: "管理仓库成员"
     saved: "权限设置已保存。"
+    invalid_display_name: "请输入 80 个字符以内的纯文本显示名，请勿填写邮箱地址。"
     invalid: "请检查地址或角色，该条目可能已经存在。"
     unknown_recipient: "请输入白名单邮箱或已有 Hub 用户 ID。"
     last_admin: "移除最后一位 Hub 管理员前，请先添加另一位已登录过的管理员。"

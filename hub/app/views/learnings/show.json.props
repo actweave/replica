@@ -11,9 +11,7 @@ json.signOutPath session_path
 json.authenticityToken form_authenticity_token
 
 json.currentUser do
-  json.login Current.user.login
-  json.name Current.user.name
-  json.avatarUrl Current.user.avatar_url
+  json.partial! partial: "shared/current_user"
 end
 
 json.repositorySelectorLabel t("repository_workspace.repository_selector", repository: @repository.name_with_owner)

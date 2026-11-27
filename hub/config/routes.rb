@@ -48,7 +48,8 @@ Rails.application.routes.draw do
     post "operator/enrollment", to: "hub_admin_enrollments#create"
     resource :security_audit, only: :show, controller: "security_audits"
     resource :session_revocation, only: %i[show create]
-    resources :auth_allowlist_entries, only: %i[index create destroy]
+    resource :profile, only: :update
+    resources :auth_allowlist_entries, only: %i[index create update destroy]
     resources :hub_admins, only: %i[index create edit update], constraints: { id: /\d+/ } do
       get :candidates, on: :collection
     end

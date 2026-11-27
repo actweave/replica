@@ -8,9 +8,12 @@ module MentionCandidates
   end
 
   def index
-    return render json: { candidates: [] } if @repository.local?
-
+    members = User.external_members_of(@repository).order(:login).map do |user|
+      { login: user.login, name: user.name, avatarUrl: user.avatar_url }
+    end
     configuration = GithubAppConfiguration.current
+    return render json: { candidates: [], externalCandidates: members } if @repository.local? || configuration.nil?
+
     candidates = Rails.cache.fetch \
       [ "mention-candidates", @repository.cache_key_with_version ],
       expires_in: 1.minute do
@@ -18,6 +21,6 @@ module MentionCandidates
         @repository,
         token: configuration.tokens.installation
     end
-    render json: { candidates: candidates }
+    render json: { candidates:, externalCandidates: members }
   end
 end

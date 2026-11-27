@@ -3,13 +3,14 @@
 # Table name: auth_allowlist_entries
 # Database name: primary
 #
-#  id          :integer          not null, primary key
-#  email       :string           not null
-#  hub_admin   :boolean          default(FALSE), not null
-#  notes       :string
-#  created_at  :datetime         not null
-#  updated_at  :datetime         not null
-#  added_by_id :integer
+#  id           :integer          not null, primary key
+#  display_name :string(80)
+#  email        :string           not null
+#  hub_admin    :boolean          default(FALSE), not null
+#  notes        :string
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#  added_by_id  :integer
 #
 # Indexes
 #
@@ -27,10 +28,12 @@ class AuthAllowlistEntry < ApplicationRecord
   has_many :pending_memberships, class_name: "RepositoryMembership", dependent: :delete_all
 
   normalizes :email, with: -> { _1.strip.downcase.presence }
+  normalizes :display_name, with: -> { _1.strip.presence }
+  validate { errors.add(:display_name, :invalid) if display_name && !DisplayName.valid?(display_name) }
   validates :email, presence: true, uniqueness: true, format: URI::MailTo::EMAIL_REGEXP
 
   # Bind verified mailbox ownership to a stable account with a public, non-email login.
-  def admit_verified_email!(provider: "email", subject: email, issuer: nil)
+  def admit_verified_email!(provider: "email", subject: email, issuer: nil, name: nil, avatar_url: nil)
     identity = UserIdentity.find_or_initialize_by(provider:, subject:)
     if identity.persisted?
       return unless identity.issuer == issuer && identity.user.email == email
@@ -42,6 +45,8 @@ class AuthAllowlistEntry < ApplicationRecord
       user.identity_kind = "external"
       user.login = "reviewer-#{SecureRandom.hex(8)}"
     end
+    user.name = name.presence || display_name if user.name.blank?
+    user.avatar_url = avatar_url if avatar_url
     user.hub_admin = true if hub_admin?
     user.update!(last_authenticated_at: Time.current)
     pending_memberships.each { _1.update!(user:, auth_allowlist_entry: nil) }

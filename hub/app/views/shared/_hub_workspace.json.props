@@ -10,9 +10,7 @@ json.darkThemeLabel t("repository_workspace.theme_dark")
 json.signOutLabel t("authenticated.sign_out")
 json.signOutPath session_path
 json.currentUser do
-  json.login Current.user.login
-  json.name Current.user.name
-  json.avatarUrl Current.user.avatar_url
+  json.partial! partial: "shared/current_user"
 end
 json.repositoriesLabel t("hub_admins.repositories")
 json.repositoriesPath repositories_path

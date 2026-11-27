@@ -49,6 +49,32 @@ describe("RepositoryUserMenu()", () => {
     expect(screen.getByRole("menuitem", { name: data.signOutLabel })).toBeInTheDocument()
   })
 
+  it("opens the external profile form with a scoped PATCH and the browser token", () => {
+    const profile = {
+      path: "/profile",
+      edit: "Edit display name",
+      name: "Display name",
+      save: "Save name",
+      cancel: "Cancel",
+    }
+    render(<RepositoryUserMenu {...data} currentUser={{ ...data.currentUser, profile }} />, {
+      wrapper: ThemeWrapper,
+    })
+    fireEvent.click(screen.getByRole("button", { name: data.accountMenuLabel }))
+    fireEvent.click(screen.getByRole("menuitem", { name: profile.edit }))
+    const input = screen.getByLabelText(profile.name)
+    expect(input).toHaveValue(data.currentUser.name)
+    const form = input.closest("form")!
+    expect(form.getAttribute("action")).toBe("/profile")
+    expect(Object.fromEntries(new FormData(form))).toEqual({
+      name: data.currentUser.name,
+      _method: "patch",
+      authenticity_token: data.authenticityToken,
+    })
+    fireEvent.click(screen.getByRole("button", { name: profile.cancel }))
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+  })
+
   it("keeps the avatar-only trigger labelled when collapsed", () => {
     render(<RepositoryUserMenu {...data} collapsed />, { wrapper: ThemeWrapper })
 

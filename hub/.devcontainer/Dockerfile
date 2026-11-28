@@ -6,7 +6,7 @@ ARG USER_UID=1000
 ARG USERNAME=vscode
 
 RUN apt-get update -qq \
-    && apt-get install --no-install-recommends -y build-essential chromium curl git libyaml-dev pkg-config sqlite3 sudo \
+    && apt-get install --no-install-recommends -y build-essential chromium curl fonts-wqy-zenhei git libyaml-dev pkg-config sqlite3 sudo \
     && gem install bundler --version ${BUNDLER_VERSION} --no-document \
     && groupadd --gid ${USER_GID} ${USERNAME} \
     && useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash ${USERNAME} \

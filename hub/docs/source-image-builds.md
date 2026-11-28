@@ -12,6 +12,7 @@ Replace these nonsecret values in the same VM shell:
 
 ```sh
 SOURCE_COMMIT=REPLACE_WITH_FULL_40_CHARACTER_COMMIT
+SOURCE_REPOSITORY=actweave/replica
 SOURCE_SHA256=REPLACE_WITH_ARCHIVE_SHA256
 CHANGE_DIR="$HOME/replica-images/REPLACE_WITH_CHANGE_NAME"
 ```
@@ -31,7 +32,7 @@ Download and verify the archive into a new directory:
   curl --fail --location --show-error --retry 3 --retry-all-errors \
     --retry-delay 2 --connect-timeout 10 --max-time 120 \
     --output source.tar.gz \
-    "https://codeload.github.com/github/replica/tar.gz/$SOURCE_COMMIT"
+    "https://codeload.github.com/$SOURCE_REPOSITORY/tar.gz/$SOURCE_COMMIT"
   printf '%s  source.tar.gz\n' "$SOURCE_SHA256" > source.sha256
   sha256sum -c source.sha256
   tar -xzf source.tar.gz --strip-components=1 -C source
@@ -99,6 +100,7 @@ IMAGE_VERSION=0.0.0-REPLACE_WITH_LOCAL_VERSION
   test "$(cat "$CHANGE_DIR/source-commit.txt")" = "$SOURCE_COMMIT"
   test -f "$CHANGE_DIR/source/hub/Dockerfile"
   test -f "$CHANGE_DIR/source/packages/learning/package-lock.json"
+  test -f "$CHANGE_DIR/source/actions/build/package-lock.json"
   test ! -e "$CHANGE_DIR/candidate-image-id.txt"
   if docker image inspect "$LOCAL_IMAGE" >/dev/null 2>&1; then
     printf 'Image tag already exists; choose a new tag instead of overwriting it.\n' >&2
@@ -107,6 +109,7 @@ IMAGE_VERSION=0.0.0-REPLACE_WITH_LOCAL_VERSION
   docker buildx build \
     --platform "$IMAGE_PLATFORM" \
     --build-context learning="$CHANGE_DIR/source/packages/learning" \
+    --build-context build_action="$CHANGE_DIR/source/actions/build" \
     --build-arg REPLICA_IMAGE_REVISION="$SOURCE_COMMIT" \
     --build-arg REPLICA_IMAGE_VERSION="$IMAGE_VERSION" \
     --tag "$LOCAL_IMAGE" --load "$CHANGE_DIR/source/hub"
@@ -120,7 +123,7 @@ IMAGE_VERSION=0.0.0-REPLACE_WITH_LOCAL_VERSION
 )
 ```
 
-The named `learning` build context is required. The production Dockerfile owns runtime and dependency versions; do not override its pins or modify lockfiles to work around connectivity. The image builds frontend assets and installs locked dependencies, so source and release builds both need registry access.
+The Dockerfile needs both named contexts to install the learning CLI and the prototype build action. Source and release builds use the same pinned dependencies and require access to their registries.
 
 `bin/devcontainer up --use-npm-proxy URL` configures the development environment only. It is not a production Docker build flag and does not automatically configure the production image. Resolve failed registry access through your approved network/proxy configuration; do not disable TLS or substitute an unapproved registry.
 

@@ -92,7 +92,9 @@ jobs:
         id: build
         with:
           context: hub
-          build-contexts: learning=packages/learning
+          build-contexts: |
+            learning=packages/learning
+            build_action=actions/build
           platforms: linux/${{ matrix.architecture }}
           outputs: type=image,name=ghcr.io/github/replica-hub,push-by-digest=true,name-canonical=true,push=true
           labels: ${{ needs.prepare.outputs.labels }}

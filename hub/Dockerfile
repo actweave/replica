@@ -2,7 +2,7 @@
 # check=error=true
 
 # This Dockerfile is designed for production, not development. Use with Kamal or build'n'run by hand:
-# docker build --build-context learning=../packages/learning -t replica_hub .
+# docker build --build-context learning=../packages/learning --build-context build_action=../actions/build -t replica_hub .
 # docker run -d -p 80:80 -e RAILS_MASTER_KEY=<value from config/master.key> --name replica_hub replica_hub
 
 # For a containerized dev environment, see Dev Containers: https://guides.rubyonrails.org/getting_started_with_devcontainer.html
@@ -32,6 +32,12 @@ ENV RAILS_ENV="production" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
 FROM docker.io/library/node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS node
+
+FROM node AS action
+WORKDIR /opt/replica/actions-build
+COPY --from=build_action package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts
+COPY --from=build_action scripts ./scripts
 
 # Throw-away build stage to reduce size of final image
 FROM base AS build
@@ -82,7 +88,9 @@ ARG REPLICA_BUILD_ACTION
 ARG REPLICA_IMAGE_REVISION
 ARG REPLICA_IMAGE_VERSION
 
-ENV REPLICA_BUILD_ACTION="${REPLICA_BUILD_ACTION}"
+ENV REPLICA_BUILD_ACTION="${REPLICA_BUILD_ACTION}" \
+    REPLICA_BUILD_ACTION_ROOT="/opt/replica/actions-build" \
+    PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH="/usr/bin/chromium"
 
 LABEL org.opencontainers.image.source="https://github.com/github/replica" \
       org.opencontainers.image.title="Replica Hub" \
@@ -93,6 +101,16 @@ LABEL org.opencontainers.image.source="https://github.com/github/replica" \
 # Node.js and replica-learning stay owned by root, so the app cannot change the code it runs.
 COPY --from=build /opt/replica/learning /opt/replica/learning
 ENV REPLICA_LEARNING_CLI="/opt/replica/learning/bin/replica-learning.mjs"
+
+COPY --from=action /opt/replica/actions-build /opt/replica/actions-build
+COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
+# The action imports the Hub Controls validator and screenshot adapter by relative path.
+RUN ln -s /rails /opt/hub && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
+    ln -s /usr/local/lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    apt-get update -qq && \
+    apt-get install --no-install-recommends -y git chromium fonts-wqy-zenhei && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Run and own only the runtime files as a non-root user for security
 RUN groupadd --system --gid 1000 rails && \

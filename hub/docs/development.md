@@ -1,6 +1,6 @@
 # Development
 
-Docker-compatible tooling is the only host requirement. Run these commands from `hub/`. The provided devcontainer provides Ruby, Node, SQLite, Git, GitHub CLI, and Chromium.
+Docker-compatible tooling is the only host requirement. Run these commands from `hub/`. The devcontainer includes Ruby, Node, SQLite, Git, GitHub CLI, Chromium and the same Chinese font used for production screenshots.
 
 Hub uses npm. The Node devcontainer feature's optional pnpm installation is disabled.
 
@@ -55,9 +55,14 @@ To remove the saved override, run `bin/devcontainer exec npm config delete regis
 
 Restart `bin/devcontainer dev` after changing Rails routes or browser scripts served directly by Rails. Restart Vite when browser assets do not match the saved source.
 
-The production image includes shared Controls source from `app/javascript/utils/prototype-controls/`. It also installs `replica-learning` from `packages/learning/`, with Node.js, under `/opt/replica/learning`, because Hub runs that command to reach Copilot. From `hub/`, build it with `docker build --build-context learning=../packages/learning --tag replica-hub:local .`. CI and release builds supply that same narrow named context. The final image keeps `/rails` as its application directory and `/rails/storage` as its persistent path.
+The production image includes the shared Controls validator, `replica-learning`, and the prototype build action with its locked runtime dependencies. The self-hosted worker uses Git, Node.js, npm, system Chromium and WenQuanYi Zen Hei for Chinese screenshots. To build the image from `hub/`, supply both source contexts from the same revision:
 
-Custom source deployments should remove the old `controls` build-context argument and supply the learning context from the same Replica revision. For a workflow checking out Replica into `replica/` and building `replica/hub`, use `--build-context learning=replica/packages/learning`. An omitted named context makes Docker resolve `learning` as an image instead of local source. Image consumers do not need this source-build argument.
+```sh
+docker build --build-context learning=../packages/learning \
+  --build-context build_action=../actions/build --tag replica-hub:local .
+```
+
+For a read-only deployment, mount writable `/rails/storage` and `/rails/tmp` for the runtime UID and provide a writable `/tmp` tmpfs. Set `REPLICA_BUILD_RUNNER=self_hosted` to build trusted repositories in Hub. Set `SOLID_QUEUE_IN_PUMA=1` when running the workers alongside the web server in one container.
 
 The image includes Node and the self-contained validator to check retained Controls assets before storage. AJV is a Hub development dependency used to generate that validator; retained-asset validation does not require installed Node packages.
 

@@ -3,6 +3,6 @@ module DisplayName
   MAX_LENGTH = 80
 
   def self.valid?(value)
-    value.is_a?(String) && value.length <= MAX_LENGTH && !value.match?(/[<>\p{Cc}]|\S+@\S+/)
+    value.is_a?(String) && value.length <= MAX_LENGTH && !value.match?(/[<>@\p{Cc}]/)
   end
 end
